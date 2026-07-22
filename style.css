@@ -765,27 +765,17 @@ body.nav-sm .nav.side-menu>li>ul.nav.child_menu {
 
 @keyframes izban-logo-animated {
     0% {
-        transform: scale(1) translateY(0) rotate(0deg);
+        transform: scale(1);
         filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
-    }
-
-    25% {
-        transform: scale(1.06) translateY(-4px) rotate(3deg);
-        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
     }
 
     50% {
-        transform: scale(1) translateY(0) rotate(0deg);
-        filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
-    }
-
-    75% {
-        transform: scale(1.06) translateY(4px) rotate(-3deg);
-        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.7));
     }
 
     100% {
-        transform: scale(1) translateY(0) rotate(0deg);
+        transform: scale(1);
         filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
     }
 }
@@ -894,7 +884,7 @@ body.dark-theme .top_nav .dropdown-usermenu {
 }
 
 /* Transparent inherits for dropdown children in light & dark modes to avoid white blocks */
-.top_nav .dropdown-menu *,
+.top_nav .dropdown-menu *:not(.izban-btn-msg):not(.izban-btn-msg *),
 .top_nav .dropdown-usermenu * {
     background: transparent !important;
     border-color: transparent !important;

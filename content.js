@@ -130,7 +130,16 @@ function handleProfileAndMessages() {
         // 5. Counts unread messages and creates dynamic indicator badge
         const msgList = envelopeLi.querySelector('.msg_list');
         if (msgList && envelopeLink) {
-            const messages = msgList.querySelectorAll('li:not(.text-center):not(:last-child)');
+            const messages = Array.from(msgList.querySelectorAll('li:not(.text-center):not(:last-child)'))
+                .filter(li => {
+                    const text = li.textContent.toLowerCase();
+                    return !text.includes('yeni mesaj yok') &&
+                        !text.includes('mesajınız bulunmamaktadır') &&
+                        !text.includes('bulunmuyor') &&
+                        !text.includes('gönder') &&
+                        !text.includes('gonder') &&
+                        text.trim().length > 0;
+                });
             const unreadCount = messages.length;
 
             if (unreadCount > 0) {
@@ -149,6 +158,9 @@ function handleProfileAndMessages() {
                     badge.style.setProperty('display', 'none', 'important');
                 }
             }
+
+            // Configure custom view/inbox actions inside message dropdown list
+            configureMessageDropdown(envelopeLi);
         }
     }
 }
@@ -192,6 +204,102 @@ function configureProfileDropdown() {
             </li>
         `;
     }
+}
+
+// Configures message dropdown dynamically with inbox & send buttons
+function configureMessageDropdown(envelopeLi) {
+    const msgList = envelopeLi.querySelector('.msg_list');
+    if (!msgList || msgList.dataset.customized === 'true') return;
+    msgList.dataset.customized = 'true';
+
+    // Find sidebar messaging link or find existing inbox redirect href in DOM
+    const sidebarInboxLink = Array.from(document.querySelectorAll('#sidebar-menu a, .side-menu a, .left_col a'))
+        .find(a => {
+            const text = a.textContent.toLowerCase();
+            return text.includes('gelen kutusu') ||
+                text.includes('mesajlar') ||
+                text.includes('mesaj listesi') ||
+                (text.includes('mesaj') && !text.includes('gönder') && !text.includes('gonder') && !text.includes('yaz') && !text.includes('ekle') && !text.includes('yeni'));
+        })?.getAttribute('href');
+
+    const sidebarSendLink = Array.from(document.querySelectorAll('#sidebar-menu a, .side-menu a, .left_col a'))
+        .find(a => {
+            const text = a.textContent.toLowerCase();
+            return text.includes('yeni mesaj') ||
+                text.includes('mesaj gönder') ||
+                text.includes('mesaj gonder') ||
+                text.includes('mesaj yaz') ||
+                text.includes('mesaj ekle');
+        })?.getAttribute('href');
+
+    const existingInboxLink = Array.from(msgList.querySelectorAll('a'))
+        .find(a => {
+            const text = a.textContent.toLowerCase();
+            return !text.includes('gönder') && !text.includes('gonder') && !text.includes('yeni') && !text.includes('ekle');
+        })?.getAttribute('href');
+
+    const existingSendLink = Array.from(msgList.querySelectorAll('a'))
+        .find(a => {
+            const text = a.textContent.toLowerCase();
+            return text.includes('yeni') || text.includes('gönder') || text.includes('gonder') || text.includes('ekle');
+        })?.getAttribute('href') || sidebarSendLink || '/Mesaj/Yeni';
+
+    // Parse existingSendLink to generate a legitimate .aspx page to prevent 404
+    let fallbackInbox = '/Mesajlar.aspx'; // Default directly to plural form Mesajlar.aspx
+    if (existingSendLink) {
+        const qIdx = existingSendLink.indexOf('?');
+        let basePath = qIdx !== -1 ? existingSendLink.substring(0, qIdx) : existingSendLink;
+        if (basePath.toLowerCase().includes('gonder') || basePath.toLowerCase().includes('ekle') || basePath.toLowerCase().includes('yeni') || basePath.toLowerCase().includes('yaz')) {
+            basePath = basePath.replace(/gonder/gi, 'lar')
+                .replace(/ekle/gi, 'lar')
+                .replace(/yeni/gi, 'lar')
+                .replace(/yaz/gi, 'lar');
+
+            // Fix double plurals like larlar or lerlar
+            basePath = basePath.replace(/larlar/gi, 'lar').replace(/lerlar/gi, 'lar');
+            basePath = basePath.replace(/desteklar/gi, 'destekler');
+
+            if (!basePath.endsWith('.aspx') && !basePath.includes('.')) {
+                basePath += '.aspx';
+            }
+        } else {
+            // Strip the .aspx page suffix name to map to singular or plural
+            basePath = basePath.replace(/mesaj/gi, 'mesajlar').replace(/mesajlarlar/gi, 'mesajlar');
+        }
+        fallbackInbox = basePath;
+    }
+
+    if (fallbackInbox === '/.aspx' || fallbackInbox === '/' || !fallbackInbox) {
+        fallbackInbox = '/Mesajlar.aspx';
+    }
+
+    const inboxUrl = sidebarInboxLink || existingInboxLink || fallbackInbox || '/Mesajlar.aspx';
+
+    // Construct beautiful custom footer actions row with Gelen Kutusu & Yeni Gönder buttons
+    const actionLi = document.createElement('li');
+    actionLi.className = 'izban-msg-actions-li';
+    actionLi.style.cssText = 'padding: 10px 16px !important; border-top: 1px solid #f1f5f9; display: flex !important; gap: 8px !important; justify-content: center !important; margin-top: 6px !important;';
+
+    actionLi.innerHTML = `
+        <a href="${inboxUrl}" class="btn btn-sm btn-primary izban-btn-msg" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #6366f1 !important; border: none !important;">
+            <i class="fa fa-envelope" style="font-size: 11px; color: #ffffff !important; margin: 0 !important; width: auto !important; height: auto !important;"></i>
+            <span style="color: #ffffff !important;">Gelen Kutusu</span>
+        </a>
+        <a href="${existingSendLink}" class="btn btn-sm btn-success izban-btn-msg" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #10b981 !important; border: none !important;">
+            <i class="fa fa-paper-plane" style="font-size: 11px; color: #ffffff !important; margin: 0 !important; width: auto !important; height: auto !important;"></i>
+            <span style="color: #ffffff !important;">Yeni Gönder</span>
+        </a>
+    `;
+
+    // Remove any existing default footer lines so it does not duplicate
+    const defaultFooters = Array.from(msgList.querySelectorAll('li')).filter(li =>
+        li.classList.contains('text-center') ||
+        li.querySelector('a[href*="Gonder"]') ||
+        li.textContent.includes('Yeni Mesaj Gönder')
+    );
+    defaultFooters.forEach(fi => fi.remove());
+
+    msgList.appendChild(actionLi);
 }
 
 // Dark Mode Initialization & Storage
