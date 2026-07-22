@@ -1,7 +1,22 @@
 /* Google Fonts - Inter Import */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* global font overrides & smooth scrolling */
+/* ----------------------------------------------------
+   FONT RESTORATION FOR ICONS (FontAwesome & Glyphicons)
+   ---------------------------------------------------- */
+.fa,
+[class^="fa-"],
+[class*=" fa-"] {
+    font-family: 'FontAwesome' !important;
+}
+
+.glyphicon,
+[class^="glyphicon-"],
+[class*=" glyphicon-"] {
+    font-family: 'Glyphicons Halflings' !important;
+}
+
+/* global font overrides & smooth scrolling (excludes icons) */
 body,
 .right_col,
 .x_panel,
@@ -15,12 +30,12 @@ h4,
 h5,
 h6,
 p,
-span,
 td,
 th,
 select,
 input,
-button {
+button,
+span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
     font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
@@ -155,7 +170,7 @@ button {
     text-transform: none !important;
     letter-spacing: normal !important;
     display: block !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 8px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -170,7 +185,7 @@ button {
     margin: 4px 0 !important;
 }
 
-/* Subtext Layout */
+/* Subtext Layout & Overlap Fixes */
 .tile_stats_count .count_bottom {
     font-size: 11.5px !important;
     color: #64748b !important;
@@ -179,17 +194,43 @@ button {
     align-items: center !important;
     flex-wrap: wrap !important;
     gap: 4px !important;
+    position: relative !important;
 }
 
-/* Modern Badge Containers styled from traditional colored texts */
-.tile_stats_count .count_bottom i {
+/* Forces all children elements to flow inline and clears manual positioning grids */
+.tile_stats_count .count_bottom * {
+    position: static !important;
+    float: none !important;
+    display: inline-block !important;
+    margin-right: 4px !important;
+    vertical-align: middle !important;
+}
+
+/* Styles the outer badge containers */
+.tile_stats_count .count_bottom i.green,
+.tile_stats_count .count_bottom i.red,
+.tile_stats_count .count_bottom i.orange,
+.tile_stats_count .count_bottom i.yellow,
+.green,
+.red,
+.orange,
+.yellow {
     font-style: normal !important;
     font-weight: 700 !important;
     font-size: 10px !important;
     padding: 2px 8px !important;
     border-radius: 8px !important;
     display: inline-block !important;
-    margin-right: 0 !important;
+    margin-right: 4px !important;
+}
+
+/* Resets padding/bg for nested icon tags inside the outer metric badge */
+.tile_stats_count .count_bottom i.green i,
+.tile_stats_count .count_bottom i.red i {
+    padding: 0 !important;
+    background: transparent !important;
+    margin-right: 2px !important;
+    display: inline-block !important;
 }
 
 /* Badge highlights based on status classes */
