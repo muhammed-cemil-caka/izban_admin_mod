@@ -16,5 +16,16 @@
                 "content.js"
             ]
         }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "bg-4k.jpg"
+            ],
+            "matches": [
+                "https://*.izban.net/*",
+                "http://*.izban.net/*"
+            ]
+        }
     ]
 }

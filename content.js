@@ -404,6 +404,8 @@ function toggleDarkMode() {
 }
 
 function handleNavigation() {
+    // Giriş sayfasını denetle
+    detectLoginPage();
     // Dinamik grafik ekleme ve sayfa yerleşimlerini güncelleme fonksiyonunu çalıştır
     handlePageLayout();
 }
@@ -647,6 +649,113 @@ function stopObserver() {
         observer.disconnect();
         observer = null;
     }
+}
+
+let originalBgImage = null;
+
+function findExistingTrainImage() {
+    // 1. Try to read directly from computed style of common elements
+    const selectors = ['.login_wrapper', '.login_content', 'form', 'body', '.login-panel'];
+    for (const s of selectors) {
+        const el = document.querySelector(s);
+        if (el) {
+            const style = window.getComputedStyle(el);
+            const bgImg = style.backgroundImage;
+            if (bgImg && bgImg !== 'none' && bgImg.includes('url')) {
+                const match = bgImg.match(/url\((['"]?)(.*?)\1\)/);
+                if (match && match[2] && !match[2].includes('Alsancak')) {
+                    return match[2];
+                }
+            }
+        }
+    }
+
+    // 2. Scan all stylesheets for rules matching login selectors that have background-image
+    try {
+        for (const sheet of document.styleSheets) {
+            try {
+                const rules = sheet.cssRules || sheet.rules;
+                if (!rules) continue;
+                for (const rule of rules) {
+                    if (rule.selectorText &&
+                        (rule.selectorText.includes('login') || rule.selectorText.includes('wrapper') || rule.selectorText.includes('body')) &&
+                        rule.style && rule.style.backgroundImage && rule.style.backgroundImage.includes('url')) {
+                        const match = rule.style.backgroundImage.match(/url\((['"]?)(.*?)\1\)/);
+                        if (match && match[2] && !match[2].includes('Alsancak')) {
+                            return match[2];
+                        }
+                    }
+                }
+            } catch (e) {
+                // Cross-origin stylesheet access error - normal for external sheets
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+    // 3. Fallbacks - scan all divs and elements with inline styling
+    const allDivs = document.querySelectorAll('div');
+    for (const div of allDivs) {
+        const inlineBg = div.style.backgroundImage;
+        if (inlineBg && inlineBg.includes('url')) {
+            const match = inlineBg.match(/url\((['"]?)(.*?)\1\)/);
+            if (match && match[2] && !match[2].includes('Alsancak')) {
+                return match[2];
+            }
+        }
+    }
+
+    // 4. Default fallback: Wikimedia E22000
+    return 'https://upload.wikimedia.org/wikipedia/commons/1/1a/TCDD_E22000_in_Alsancak.jpg';
+}
+
+function detectLoginPage() {
+    const isLoginPath = window.location.pathname.toLowerCase().includes('login') ||
+        window.location.pathname.toLowerCase().includes('default.asp') ||
+        window.location.pathname.toLowerCase().includes('default.aspx') ||
+        window.location.pathname === '/';
+
+    const hasLoginFields = document.querySelector('input[type="password"]') ||
+        document.querySelector('input[name*="kullanici" i]') ||
+        document.querySelector('input[id*="kullanici" i]') ||
+        document.querySelector('input[name*="sicil" i]') ||
+        document.querySelector('input[id*="sicil" i]');
+
+    if (isLoginPath || hasLoginFields) {
+        if (!originalBgImage) {
+            originalBgImage = findExistingTrainImage();
+        }
+
+        if (!document.body.classList.contains('izban-login-page')) {
+            document.body.classList.add('izban-login-page');
+        }
+        setupLoginBackground();
+    }
+}
+
+function setupLoginBackground() {
+    if (document.getElementById('izban-login-bg-container')) return;
+
+    let trainImgUrl = chrome.runtime.getURL('bg-4k.jpg');
+
+    const bgContainer = document.createElement('div');
+    bgContainer.id = 'izban-login-bg-container';
+
+    bgContainer.innerHTML = `
+        <div class="izban-login-bg-image" style="background-image: url('${trainImgUrl}') !important;"></div>
+        <div class="izban-login-bg-overlay"></div>
+    `;
+    document.body.insertBefore(bgContainer, document.body.firstChild);
+
+    // Hata oluşmaması için wrapper ve login içeriğindeki mevcut arka plan görselini temizliyoruz ki glassmorphic olsun
+    ['.login_wrapper', '.login_content', 'form', '.form'].forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.style.setProperty('background-image', 'none', 'important');
+            el.style.setProperty('background-color', 'transparent', 'important');
+        }
+    });
 }
 
 // Sayfa yüklendiğinde başlat
