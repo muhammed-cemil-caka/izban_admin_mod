@@ -41,6 +41,159 @@ function disableLogoNavigation() {
     });
 }
 
+// Profile redirection, Personal Page Scrollbar class injection, Envelope notifications
+function handleProfileAndMessages() {
+    // 1. Personal Page Detection
+    const titles = Array.from(document.querySelectorAll('.x_title h2'));
+    const isOzlukOrKisisel = titles.some(h2 => h2.textContent.toUpperCase().includes('ÖZLÜK') ||
+        h2.textContent.toUpperCase().includes('KİŞİSEL BİLGİLER') ||
+        h2.textContent.toUpperCase().includes('KISISEL BILGILER'));
+
+    const isKisiselPage = window.location.pathname.includes('Kisisel') ||
+        window.location.pathname.includes('kisisel') ||
+        window.location.pathname.includes('Personal') ||
+        window.location.pathname.includes('Profil') ||
+        isOzlukOrKisisel ||
+        (document.title && document.title.includes('Kişisel Bilgiler'));
+
+    if (isKisiselPage) {
+        document.body.classList.add('izban-kisisel-page');
+    }
+
+    // 2. Identify Top Navigation Items and Set IDs for Reordering
+    const profileLink = document.querySelector('.top_nav .user-profile');
+    if (profileLink) {
+        const profileLi = profileLink.closest('li');
+        if (profileLi) {
+            profileLi.id = 'izban-profile-li';
+
+            // Manual click toggle on profile triggers to bypass bootstrap JS failures on homepage
+            if (profileLi.dataset.toggleHandlerAdded !== 'true') {
+                profileLi.dataset.toggleHandlerAdded = 'true';
+                profileLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    profileLi.classList.toggle('open');
+
+                    // Close other open dropdowns (like envelope menu)
+                    const envelopeLi = document.getElementById('izban-envelope-li');
+                    if (envelopeLi) envelopeLi.classList.remove('open');
+                });
+
+                // Close when clicking anywhere outside
+                document.addEventListener('click', (e) => {
+                    if (!profileLi.contains(e.target)) {
+                        profileLi.classList.remove('open');
+                    }
+                });
+            }
+        }
+    }
+
+    const envelopeIcon = document.querySelector('.top_nav i.fa-envelope-o, .top_nav i.fa-envelope');
+    if (envelopeIcon) {
+        const envelopeLi = envelopeIcon.closest('li');
+        if (envelopeLi) {
+            envelopeLi.id = 'izban-envelope-li';
+        }
+    }
+
+    // 3. Configure Profile Dropdown Items (Personal Info, Settings, Exit)
+    configureProfileDropdown();
+
+    // 4. Envelope Message Dropdown Toggle & Unread Badge Counter
+    const envelopeLi = document.querySelector('.top_nav i.fa-envelope-o, .top_nav i.fa-envelope')?.closest('li');
+    if (envelopeLi) {
+        const envelopeLink = envelopeLi.querySelector('a');
+        if (envelopeLink && envelopeLi.dataset.dropdownHandlerAdded !== 'true') {
+            envelopeLi.dataset.dropdownHandlerAdded = 'true';
+
+            // Toggle open class on click to support manual opening
+            envelopeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                envelopeLi.classList.toggle('open');
+
+                // Close other open dropdowns (like user profile menu)
+                const profileLi = document.getElementById('izban-profile-li');
+                if (profileLi) profileLi.classList.remove('open');
+            });
+
+            // Close when clicking anywhere outside
+            document.addEventListener('click', (e) => {
+                if (!envelopeLi.contains(e.target)) {
+                    envelopeLi.classList.remove('open');
+                }
+            });
+        }
+
+        // 5. Counts unread messages and creates dynamic indicator badge
+        const msgList = envelopeLi.querySelector('.msg_list');
+        if (msgList && envelopeLink) {
+            const messages = msgList.querySelectorAll('li:not(.text-center):not(:last-child)');
+            const unreadCount = messages.length;
+
+            if (unreadCount > 0) {
+                let badge = envelopeLink.querySelector('.badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'badge bg-green';
+                    envelopeLink.appendChild(badge);
+                    envelopeLink.style.position = 'relative';
+                }
+                badge.textContent = unreadCount;
+                badge.style.setProperty('display', 'inline-block', 'important');
+            } else {
+                const badge = envelopeLink.querySelector('.badge');
+                if (badge) {
+                    badge.style.setProperty('display', 'none', 'important');
+                }
+            }
+        }
+    }
+}
+
+// Configures user profile dropdown dynamically with 3 buttons
+function configureProfileDropdown() {
+    const userMenu = document.querySelector('.dropdown-usermenu');
+    if (userMenu && userMenu.dataset.customized !== 'true') {
+        userMenu.dataset.customized = 'true';
+
+        // Find existing Log Out (exit) link
+        const logoutLink = Array.from(userMenu.querySelectorAll('a'))
+            .find(a => a.getAttribute('href') && (a.getAttribute('href').includes('logout') || a.getAttribute('href').includes('exit') || a.textContent.toLowerCase().includes('çıkış') || a.textContent.toLowerCase().includes('out')))
+            ?.getAttribute('href') || '/logout';
+
+        // Find "Kişisel Bilgilerim" URL
+        const kisiselLink = Array.from(document.querySelectorAll('.nav.side-menu a'))
+            .find(a => a.textContent.includes('Kişisel Bilgiler') || a.textContent.includes('Kisisel Bilgiler'))
+            ?.getAttribute('href') || localStorage.getItem('izban-kisisel-url') || '#';
+
+        // Construct the new list of menu items
+        userMenu.innerHTML = `
+            <li>
+                <a href="${kisiselLink}" style="padding: 10px 16px !important; display: flex !important; align-items: center; gap: 8px;">
+                    <i class="fa fa-user" style="font-size: 14px; width: 16px; text-align: center;"></i>
+                    <span>Kişisel Bilgilerim</span>
+                </a>
+            </li>
+            <li>
+                <a href="javascript:;" style="padding: 10px 16px !important; display: flex !important; align-items: center; gap: 8px;">
+                    <i class="fa fa-cog" style="font-size: 14px; width: 16px; text-align: center;"></i>
+                    <span>Ayarlar</span>
+                </a>
+            </li>
+            <li class="divider" style="margin: 6px 0; border-top: 1px solid #e2e8f0;"></li>
+            <li>
+                <a href="${logoutLink}" style="padding: 10px 16px !important; display: flex !important; align-items: center; gap: 8px;">
+                    <i class="fa fa-sign-out" style="font-size: 14px; width: 16px; text-align: center;"></i>
+                    <span>Çıkış</span>
+                </a>
+            </li>
+        `;
+    }
+}
+
 // Dark Mode Initialization & Storage
 function initializeDarkMode() {
     const isDark = localStorage.getItem('izban-dark-mode') === 'true';
@@ -126,6 +279,9 @@ function handlePageLayout() {
 
     // Logo yönlendirmesini devre dışı bırak
     disableLogoNavigation();
+
+    // Profil yönlendirmesini, sayfa sınıfını ve zarf bildirimlerini denetle
+    handleProfileAndMessages();
 
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();

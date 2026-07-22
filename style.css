@@ -789,3 +789,225 @@ body.nav-sm .nav.side-menu>li>ul.nav.child_menu {
         filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
     }
 }
+
+/* ====================================================
+   NAVBAR-RIGHT HEADER VERTICAL ALIGNMENT & BADGE
+   ==================================================== */
+.top_nav .navbar-right {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    /* Force to the right inside parent */
+    float: right !important;
+    margin: 0 !important;
+    margin-left: auto !important;
+    /* Push it to the right if flex-parent exists */
+    width: auto !important;
+    /* Prevent expansion to 100% width on some media queries */
+    padding: 0 !important;
+    height: 100% !important;
+}
+
+.top_nav .navbar-right>li {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    height: 100% !important;
+    float: none !important;
+    position: relative !important;
+    background: transparent !important;
+}
+
+/* Flex item ordering: envelope (1) -> profile (2) -> dark mode (3) */
+#izban-envelope-li {
+    order: 1 !important;
+}
+
+#izban-profile-li {
+    order: 2 !important;
+}
+
+#izban-dark-toggle-top-li {
+    order: 3 !important;
+}
+
+/* Remove default white/light-grey styling on click and active dropdown trigger state */
+.nav.navbar-nav>li>a:focus,
+.nav.navbar-nav>li>a:hover,
+.nav.navbar-nav>li.open>a,
+.nav.navbar-nav>li.open>a:focus,
+.nav.navbar-nav>li.open>a:hover {
+    background: transparent !important;
+    color: inherit !important;
+}
+
+body.dark-theme .nav.navbar-nav>li>a:focus,
+body.dark-theme .nav.navbar-nav>li>a:hover,
+body.dark-theme .nav.navbar-nav>li.open>a {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #ffffff !important;
+}
+
+/* Custom premium-styled unread notification badge on the envelope icon */
+.top_nav .info-number .badge {
+    background: #6366f1 !important;
+    color: #ffffff !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 2px !important;
+    border: 2px solid #ffffff !important;
+    border-radius: 10px !important;
+    line-height: 1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.dark-theme .top_nav .info-number .badge {
+    border-color: #0f172a !important;
+    /* dark theme background matching border */
+}
+
+/* ====================================================
+   DROPDOWN MENUS (MESSAGE & PROFILE CARDS)
+   ==================================================== */
+.top_nav .dropdown-menu,
+.top_nav .dropdown-usermenu {
+    border-radius: 12px !important;
+    padding: 10px 0 !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+    margin-top: 8px !important;
+    min-width: 170px !important;
+}
+
+body.dark-theme .top_nav .dropdown-menu,
+body.dark-theme .top_nav .dropdown-usermenu {
+    background: #1e293b !important;
+    /* modern dark grey card */
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Transparent inherits for dropdown children in light & dark modes to avoid white blocks */
+.top_nav .dropdown-menu *,
+.top_nav .dropdown-usermenu * {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+.top_nav .dropdown-menu li a,
+.top_nav .dropdown-usermenu li a {
+    color: #475569 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease !important;
+    display: block !important;
+}
+
+body.dark-theme .top_nav .dropdown-menu,
+body.dark-theme .top_nav .dropdown-menu *,
+body.dark-theme .top_nav .dropdown-usermenu,
+body.dark-theme .top_nav .dropdown-usermenu * {
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme .top_nav .dropdown-menu strong,
+body.dark-theme .top_nav .dropdown-usermenu strong {
+    color: #ffffff !important;
+}
+
+.top_nav .dropdown-menu li a:hover,
+.top_nav .dropdown-usermenu li a:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+body.dark-theme .top_nav .dropdown-menu li a:hover,
+body.dark-theme .top_nav .dropdown-usermenu li a:hover {
+    background: #334155 !important;
+    color: #ffffff !important;
+}
+
+.top_nav .dropdown-menu.msg_list li a {
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+body.dark-theme .top_nav .dropdown-menu.msg_list li a {
+    border-bottom: 1px solid #334155 !important;
+}
+
+.top_nav .dropdown-menu.msg_list li:last-child a {
+    border-bottom: none !important;
+}
+
+/* ====================================================
+   PERSONAL INFO (KİŞİSEL BİLGİLER) CARD SCROLLBARS
+   ==================================================== */
+.izban-kisisel-page .x_panel {
+    height: auto !important;
+}
+
+.izban-kisisel-page .x_panel .x_content {
+    max-height: 240px !important;
+    /* height constraint so items don't overflow */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px !important;
+}
+
+/* Modern slim scrollbar for Kişisel Bilgilerim card lists */
+.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+    border-radius: 4px !important;
+}
+
+.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+body.dark-theme.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar-thumb {
+    background: #475569 !important;
+}
+
+body.dark-theme.izban-kisisel-page .x_panel .x_content::-webkit-scrollbar-thumb:hover {
+    background: #64748b !important;
+}
+
+
+/* ====================================================
+   DARK THEME TABLE STRIPES AND INLINE BG OVERRIDES
+   ==================================================== */
+body.dark-theme tr,
+body.dark-theme td,
+body.dark-theme tr.odd,
+body.dark-theme tr.even,
+body.dark-theme .table-striped>tbody>tr:nth-of-type(odd) {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme tr[style*="background"],
+body.dark-theme td[style*="background"],
+body.dark-theme tr[style*="background-color"],
+body.dark-theme td[style*="background-color"] {
+    background-color: #0f172a !important;
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme tr:hover td {
+    background-color: #1e293b !important;
+}
