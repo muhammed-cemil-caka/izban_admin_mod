@@ -623,3 +623,73 @@ body.dark-theme ::-webkit-scrollbar-thumb {
 body.dark-theme ::-webkit-scrollbar-thumb:hover {
     background: #334155;
 }
+
+/* Fix layout white stripes (vertical gap and bottom footer banner) in Dark Theme */
+body.dark-theme,
+html.dark-theme,
+body.dark-theme .nav-md,
+body.dark-theme .nav-sm,
+body.dark-theme .container.body,
+body.dark-theme .container.body .main_container,
+body.dark-theme .main_container,
+body.dark-theme .right_col {
+    background: #0b0f19 !important;
+    background-color: #0b0f19 !important;
+}
+
+body.dark-theme .col-md-3.left_col,
+body.dark-theme .left_col,
+body.dark-theme .left_col.scroll-view,
+body.dark-theme .sidebar-footer {
+    background: #0f172a !important;
+    background-color: #0f172a !important;
+}
+
+body.dark-theme footer {
+    background: #0b0f19 !important;
+    background-color: #0b0f19 !important;
+    color: #64748b !important;
+    border-top: 1px solid #1e293b !important;
+}
+
+body.dark-theme footer a {
+    color: #6366f1 !important;
+}
+
+/* Confetti keyframes and design for modern birthday card */
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.izban-birthday-empty {
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.izban-birthday-empty:hover {
+    transform: translateY(-2px) !important;
+    border-style: solid !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -4px rgba(99, 102, 241, 0.1) !important;
+}
+
+body.dark-theme .izban-birthday-empty:hover {
+    border-color: #6366f1 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-theme .izban-birthday-empty {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    border-color: #334155 !important;
+}
+
+body.dark-theme .izban-birthday-empty div {
+    color: #cbd5e1 !important;
+}

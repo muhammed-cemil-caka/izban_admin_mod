@@ -84,6 +84,9 @@ function handlePageLayout() {
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();
 
+    // Doğum günü bölümünü hareketlendir
+    handleBirthdaySection();
+
     // 1. KPI Kartları (Top Tiles): Sağ tarafa küçük bir SVG pasta grafiği/ilerleme dairesi ekle
     const tiles = document.querySelectorAll('.tile_stats_count');
     tiles.forEach(tile => {
@@ -173,8 +176,8 @@ function handlePageLayout() {
         const table = panel.querySelector('.table');
         const titleText = panel.querySelector('.x_title h2')?.textContent || '';
 
-        // Sadece ana sayfa düzeyindeki tablolu modüllere (İzin, Tesis veya Doküman içerenlere) grafik yerleştir
-        if (table && (titleText.includes('Tesisler') || titleText.includes('İzin') || titleText.includes('Doküman'))) {
+        // Sadece ana sayfa düzeyindeki tablolu modüllere (İzin ve Tesis içerenlere) grafik yerleştir (Doküman/Revize kartları hariç)
+        if (table && (titleText.includes('Tesisler') || titleText.includes('İzin')) && !titleText.includes('Doküman') && !titleText.includes('Revize')) {
             panel.dataset.styled = 'true';
 
             // Yan yana hizalamak için flex kutusu kuralım
@@ -247,6 +250,39 @@ function handlePageLayout() {
                     });
                 }
             }, 200);
+        }
+    });
+}
+
+function handleBirthdaySection() {
+    const panels = document.querySelectorAll('.x_panel');
+    panels.forEach(panel => {
+        const titleEl = panel.querySelector('.x_title h2');
+        if (!titleEl) return;
+        const titleText = (titleEl.textContent || "").trim();
+        if (titleText.includes("Doğum Günü")) {
+            const contentEl = panel.querySelector('.x_content');
+            if (!contentEl || contentEl.dataset.styled === 'true') return;
+            contentEl.dataset.styled = 'true';
+
+            // İçerik kontrolü
+            const text = contentEl.textContent || "";
+            if (text.includes("bulunmamaktadır") || text.includes("bulunmuyor") || text.includes("bulunmadı")) {
+                contentEl.innerHTML = `
+                    <div class="izban-birthday-empty" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; border: 1px dashed #cbd5e1; position: relative; overflow: hidden; min-height: 120px;">
+                        <div class="birthday-confetti-effect" style="position: absolute; top:0; left:0; right:0; bottom:0; opacity: 0.15; pointer-events: none; background-image: radial-gradient(circle, #3b82f6 1px, transparent 1px), radial-gradient(circle, #ef4444 1px, transparent 1px); background-size: 20px 20px; background-position: 0 0, 10px 10px;"></div>
+                        <div class="izban-birthday-icon-wrapper" style="font-size: 32px; color: #6366f1; margin-bottom: 12px; animation: bounce 2s infinite ease-in-out; display: inline-block;">
+                            🎂
+                        </div>
+                        <div style="font-size: 13px; font-weight: 700; color: #475569; line-height: 1.5; margin-bottom: 4px;">
+                            Bugün doğum günü olan personel bulunmamaktadır.
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8;">
+                            Yeni yaşlarında tüm ekibimize mutluluklar dileriz!
+                        </div>
+                    </div>
+                `;
+            }
         }
     });
 }
