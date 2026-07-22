@@ -165,6 +165,64 @@ function handleProfileAndMessages() {
     }
 }
 
+// Dynamically finds the settings/password change page from the sidebar menu
+function getSettingsUrl() {
+    let url = localStorage.getItem('izban-settings-url');
+    if (url && url !== '#' && !url.startsWith('javascript:')) return url;
+
+    // First priority: Check the sidebar footer settings cog button (glyphicon-cog, fa-cog, title="Settings", etc.)
+    const footerLink = document.querySelector('.sidebar-footer a[title*="Settings" i], .sidebar-footer a[title*="Ayar" i], .sidebar-footer a[title*="ayar" i], .sidebar-footer a[href*="ayar" i], .sidebar-footer a[href*="setting" i]')
+        || Array.from(document.querySelectorAll('.sidebar-footer a')).find(a => {
+            const html = a.innerHTML.toLowerCase();
+            const title = (a.getAttribute('title') || '').toLowerCase();
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            return html.includes('cog') || html.includes('gear') || title.includes('ayar') || title.includes('setting') || href.includes('ayar') || href.includes('setting');
+        });
+
+    if (footerLink) {
+        const href = footerLink.getAttribute('href');
+        if (href && href !== '#' && !href.startsWith('javascript:')) {
+            localStorage.setItem('izban-settings-url', href);
+            return href;
+        }
+    }
+
+    const links = Array.from(document.querySelectorAll('.left_col a, #sidebar-menu a, .nav.side-menu a'));
+
+    // First priority: Exact match or clear settings/password change page
+    const settingsLink = links.find(a => {
+        const text = a.textContent.toLowerCase();
+        const href = a.getAttribute('href') || '';
+        if (href === '#' || href.startsWith('javascript:')) return false;
+        return (text.includes('şifre değiştir') || text.includes('sifre degistir') || text.includes('şifre işlemleri') || (text.includes('ayar') && !text.includes('kpi')));
+    });
+    if (settingsLink) {
+        const href = settingsLink.getAttribute('href');
+        localStorage.setItem('izban-settings-url', href);
+        return href;
+    }
+
+    // Second priority: Any page with "ayar"
+    const anyAyarLink = links.find(a => {
+        const text = a.textContent.toLowerCase();
+        const href = a.getAttribute('href') || '';
+        if (href === '#' || href.startsWith('javascript:')) return false;
+        return text.includes('ayar');
+    });
+    if (anyAyarLink) {
+        const href = anyAyarLink.getAttribute('href');
+        localStorage.setItem('izban-settings-url', href);
+        return href;
+    }
+
+    // Fallback if none found - use Kişisel Bilgilerim page to prevent 404
+    const kisiselLink = Array.from(document.querySelectorAll('.nav.side-menu a'))
+        .find(a => a.textContent.includes('Kişisel Bilgiler') || a.textContent.includes('Kisisel Bilgiler'))
+        ?.getAttribute('href') || localStorage.getItem('izban-kisisel-url') || '#';
+
+    return kisiselLink && kisiselLink !== '#' ? kisiselLink : '#';
+}
+
 // Configures user profile dropdown dynamically with 3 buttons
 function configureProfileDropdown() {
     const userMenu = document.querySelector('.dropdown-usermenu');
@@ -181,6 +239,9 @@ function configureProfileDropdown() {
             .find(a => a.textContent.includes('Kişisel Bilgiler') || a.textContent.includes('Kisisel Bilgiler'))
             ?.getAttribute('href') || localStorage.getItem('izban-kisisel-url') || '#';
 
+        // Dynamic Settings URL
+        const ayarlarLink = getSettingsUrl();
+
         // Construct the new list of menu items
         userMenu.innerHTML = `
             <li>
@@ -190,7 +251,7 @@ function configureProfileDropdown() {
                 </a>
             </li>
             <li>
-                <a href="javascript:;" style="padding: 10px 16px !important; display: flex !important; align-items: center; gap: 8px;">
+                <a href="${ayarlarLink}" style="padding: 10px 16px !important; display: flex !important; align-items: center; gap: 8px;">
                     <i class="fa fa-cog" style="font-size: 14px; width: 16px; text-align: center;"></i>
                     <span>Ayarlar</span>
                 </a>
@@ -423,6 +484,10 @@ function handlePageLayout() {
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();
 
+    // Arama barlarını yükle
+    initializeSidebarSearch();
+    initializeContactsSearch();
+    initializeSelectMultipleSearch();
 
     // Doğum günü bölümünü hareketlendir
     handleBirthdaySection();
@@ -732,6 +797,324 @@ function detectLoginPage() {
         }
         setupLoginBackground();
     }
+}
+
+function turkishToLower(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/İ/g, 'i')
+        .replace(/I/g, 'ı')
+        .toLowerCase();
+}
+
+function initializeContactsSearch() {
+    if (document.getElementById('izban-contacts-search-wrapper')) return;
+
+    // Detect if we are on a contacts page
+    const cards = document.querySelectorAll('.profile_details');
+
+    // Check page title / URL for table-based contact list
+    const titleText = (document.title || "").toLowerCase();
+    const headers = Array.from(document.querySelectorAll('.x_title h2, .page-title h3')).map(h => h.textContent.toLowerCase());
+    const isContactsPage = cards.length > 0 ||
+        window.location.pathname.toLowerCase().includes('rehber') ||
+        window.location.pathname.toLowerCase().includes('personel') ||
+        titleText.includes('rehber') ||
+        titleText.includes('personel') ||
+        titleText.includes('kişi') ||
+        headers.some(h => h.includes('rehber') || h.includes('personel') || h.includes('kişi'));
+
+    if (!isContactsPage) return;
+
+    // Determine injection point
+    let injectBeforeElement = null;
+    let searchType = ''; // 'cards' or 'table'
+
+    if (cards.length > 0) {
+        searchType = 'cards';
+        // Go up to the closest row or parent container to inject search bar cleanly before it
+        const firstCard = cards[0];
+        injectBeforeElement = firstCard.closest('.row') || firstCard.parentElement;
+    } else {
+        const tables = document.querySelectorAll('.right_col table');
+        if (tables.length > 0) {
+            searchType = 'table';
+            // Inject before the container panel or table
+            const table = tables[0];
+            injectBeforeElement = table.closest('.x_panel') || table;
+        }
+    }
+
+    if (!injectBeforeElement) return;
+
+    // Create search bar element
+    const searchWrapper = document.createElement('div');
+    searchWrapper.id = 'izban-contacts-search-wrapper';
+    searchWrapper.className = 'izban-search-wrapper';
+    searchWrapper.innerHTML = `
+        <input type="text" id="izban-contacts-search" class="izban-search-input" placeholder="Kişi ara... (İsim, unvan, tel vb.)" autocomplete="off" />
+        <i class="fa fa-search izban-search-icon"></i>
+        <button type="button" id="izban-contacts-search-clear" class="izban-search-clear">
+            <i class="fa fa-times-circle"></i>
+        </button>
+    `;
+
+    injectBeforeElement.parentNode.insertBefore(searchWrapper, injectBeforeElement);
+
+    const searchInput = document.getElementById('izban-contacts-search');
+    const clearBtn = document.getElementById('izban-contacts-search-clear');
+
+    searchInput.addEventListener('input', (e) => {
+        const query = turkishToLower(e.target.value.trim());
+
+        if (query) {
+            clearBtn.style.display = 'block';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+
+        if (searchType === 'cards') {
+            const contactCards = document.querySelectorAll('.profile_details');
+            contactCards.forEach(card => {
+                const nameEl = card.querySelector('.left h2, h2:not(.brief), h2');
+                const nameText = nameEl ? nameEl.textContent.trim() : card.textContent.trim();
+                const match = !query || turkishToLower(nameText).startsWith(query);
+                if (match) {
+                    card.style.setProperty('display', '', 'important');
+                } else {
+                    card.style.setProperty('display', 'none', 'important');
+                }
+            });
+        } else if (searchType === 'table') {
+            const rows = document.querySelectorAll('.right_col table tbody tr');
+            rows.forEach(row => {
+                // Skip header rows by checking if they contain th
+                if (row.querySelector('th')) return;
+                const cells = Array.from(row.querySelectorAll('td'));
+                const nameCell = cells.find(td => {
+                    const val = td.textContent.trim();
+                    return val && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(val) && !val.includes(':');
+                });
+                const match = !query || (nameCell && turkishToLower(nameCell.textContent.trim()).startsWith(query));
+                if (match) {
+                    row.style.setProperty('display', '', 'important');
+                } else {
+                    row.style.setProperty('display', 'none', 'important');
+                }
+            });
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        searchInput.focus();
+
+        // Trigger input event to reset view
+        searchInput.dispatchEvent(new Event('input'));
+    });
+}
+
+function initializeSidebarSearch() {
+    if (document.getElementById('izban-sidebar-search-container')) return;
+
+    const sidebarMenu = document.getElementById('sidebar-menu') || document.querySelector('.main_menu_side');
+    if (!sidebarMenu) return;
+
+    // Create search bar element
+    const searchContainer = document.createElement('div');
+    searchContainer.id = 'izban-sidebar-search-container';
+    searchContainer.className = 'izban-sidebar-search-container';
+    searchContainer.innerHTML = `
+        <div class="search-box-wrapper">
+            <input type="text" id="izban-sidebar-search" placeholder="Menüde ara..." autocomplete="off" />
+            <i class="fa fa-search search-icon"></i>
+            <button type="button" id="izban-sidebar-clear">
+                <i class="fa fa-times-circle"></i>
+            </button>
+        </div>
+    `;
+
+    // Inject at the top of the sidebar menu
+    if (sidebarMenu.firstChild) {
+        sidebarMenu.insertBefore(searchContainer, sidebarMenu.firstChild);
+    } else {
+        sidebarMenu.appendChild(searchContainer);
+    }
+
+    const searchInput = document.getElementById('izban-sidebar-search');
+    const clearBtn = document.getElementById('izban-sidebar-clear');
+
+    // Keep track of original menu states before search typing starts
+    let originalStates = [];
+
+    function saveMenuStates() {
+        originalStates = [];
+        const topLevels = document.querySelectorAll('.nav.side-menu > li');
+        topLevels.forEach((li, index) => {
+            const childMenu = li.querySelector('.child_menu');
+            originalStates.push({
+                index: index,
+                isActive: li.classList.contains('active'),
+                childDisplay: childMenu ? childMenu.style.display : ''
+            });
+        });
+    }
+
+    function restoreMenuStates() {
+        const topLevels = document.querySelectorAll('.nav.side-menu > li');
+        topLevels.forEach((li, index) => {
+            const state = originalStates.find(s => s.index === index);
+            if (!state) return;
+
+            // Restore active class
+            if (state.isActive) {
+                li.classList.add('active');
+            } else {
+                li.classList.remove('active');
+            }
+
+            // Restore child menu display style
+            const childMenu = li.querySelector('.child_menu');
+            if (childMenu) {
+                childMenu.style.display = state.childDisplay;
+            }
+
+            // Clean up any inline overrides we did during filter
+            li.style.display = '';
+            const childLis = li.querySelectorAll('.child_menu li');
+            childLis.forEach(childLi => childLi.style.display = '');
+        });
+    }
+
+    // Initialize original states
+    saveMenuStates();
+
+    searchInput.addEventListener('input', (e) => {
+        const query = turkishToLower(e.target.value.trim());
+
+        if (query) {
+            clearBtn.style.display = 'block';
+        } else {
+            clearBtn.style.display = 'none';
+            restoreMenuStates();
+            return;
+        }
+
+        const topLevels = document.querySelectorAll('.nav.side-menu > li');
+
+        topLevels.forEach(li => {
+            const topLinkText = turkishToLower(li.querySelector('a')?.textContent || '');
+            const childMenu = li.querySelector('.child_menu');
+            const childLis = childMenu ? li.querySelectorAll('.child_menu li') : [];
+
+            let topMatch = !query || topLinkText.startsWith(query);
+            let childMatchCount = 0;
+
+            childLis.forEach(childLi => {
+                const childText = turkishToLower(childLi.textContent.trim());
+                const childMatch = !query || childText.startsWith(query);
+                if (childMatch) {
+                    childLi.style.setProperty('display', '', 'important');
+                    childMatchCount++;
+                } else {
+                    childLi.style.setProperty('display', 'none', 'important');
+                }
+            });
+
+            if (topMatch || childMatchCount > 0) {
+                li.style.setProperty('display', '', 'important');
+
+                // If sub-items match, expand the menu to make them visible
+                if (childMatchCount > 0 && childMenu) {
+                    childMenu.style.setProperty('display', 'block', 'important');
+                    li.classList.add('active');
+                } else if (childMenu && !topMatch) {
+                    childMenu.style.setProperty('display', 'none', 'important');
+                    li.classList.remove('active');
+                }
+            } else {
+                li.style.setProperty('display', 'none', 'important');
+                if (childMenu) {
+                    childMenu.style.setProperty('display', 'none', 'important');
+                }
+            }
+        });
+    });
+
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearBtn.style.display = 'none';
+        restoreMenuStates();
+        searchInput.focus();
+    });
+
+    // Re-save states when menu items are clicked directly (to capture user updates while not searching)
+    const topMenuLinks = document.querySelectorAll('.nav.side-menu > li > a');
+    topMenuLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (!searchInput.value.trim()) {
+                // Wait for the native toggle to play out
+                setTimeout(saveMenuStates, 300);
+            }
+        });
+    });
+}
+
+function initializeSelectMultipleSearch() {
+    const selects = document.querySelectorAll('select[multiple]');
+    selects.forEach((select, idx) => {
+        if (select.dataset.searchInjected === 'true') return;
+        select.dataset.searchInjected = 'true';
+
+        // Force exactly 5 options height natively
+        select.setAttribute('size', '5');
+
+        const selectId = select.id || `izban-select-multiple-${idx}`;
+        select.id = selectId;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'izban-select-search-wrapper';
+        wrapper.innerHTML = `
+            <input type="text" class="izban-select-search-input" placeholder="Alıcı ara..." autocomplete="off" data-target="${selectId}" />
+            <i class="fa fa-search search-icon"></i>
+            <button type="button" class="izban-select-clear">
+                <i class="fa fa-times-circle"></i>
+            </button>
+        `;
+
+        select.parentNode.insertBefore(wrapper, select);
+
+        const searchInput = wrapper.querySelector('.izban-select-search-input');
+        const clearBtn = wrapper.querySelector('.izban-select-clear');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = turkishToLower(e.target.value.trim());
+            if (query) {
+                clearBtn.style.display = 'block';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+
+            const options = select.querySelectorAll('option');
+            options.forEach(opt => {
+                const text = turkishToLower(opt.textContent.trim());
+                const match = !query || text.startsWith(query);
+                if (match) {
+                    opt.style.display = '';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+        });
+
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearBtn.style.display = 'none';
+            searchInput.focus();
+            searchInput.dispatchEvent(new Event('input'));
+        });
+    });
 }
 
 function setupLoginBackground() {
