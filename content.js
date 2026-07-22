@@ -1,6 +1,34 @@
 // İZBAN Admin Panel Modernizer extension content script
 let observer = null;
 
+// Inject Homepage Button into Left Sidebar Menu
+function injectHomepageButton() {
+    const sideMenu = document.querySelector('.nav.side-menu');
+    if (sideMenu && !document.getElementById('izban-homepage-menu-item')) {
+        const homeLi = document.createElement('li');
+        homeLi.id = 'izban-homepage-menu-item';
+
+        const siteTitleLink = document.querySelector('.site_title, .nav_title a')?.getAttribute('href') || '/';
+        const isHome = window.location.pathname === '/' || window.location.pathname.endsWith('/index.html') || window.location.pathname.includes('/default.aspx') || window.location.pathname.includes('/Home');
+
+        if (isHome) {
+            homeLi.classList.add('active');
+        }
+
+        homeLi.innerHTML = `
+            <a href="${siteTitleLink}">
+                <i class="fa fa-home"></i> <span>Ana Sayfa</span>
+            </a>
+        `;
+
+        if (sideMenu.firstChild) {
+            sideMenu.insertBefore(homeLi, sideMenu.firstChild);
+        } else {
+            sideMenu.appendChild(homeLi);
+        }
+    }
+}
+
 // Dark Mode Initialization & Storage
 function initializeDarkMode() {
     const isDark = localStorage.getItem('izban-dark-mode') === 'true';
@@ -81,8 +109,12 @@ function handleNavigation() {
 }
 
 function handlePageLayout() {
+    // AnaSayfa butonunu sol menüye ekle
+    injectHomepageButton();
+
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();
+
 
     // Doğum günü bölümünü hareketlendir
     handleBirthdaySection();

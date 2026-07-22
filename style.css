@@ -693,3 +693,101 @@ body.dark-theme .izban-birthday-empty {
 body.dark-theme .izban-birthday-empty div {
     color: #cbd5e1 !important;
 }
+
+/* ====================================================
+   COLLAPSED SIDEBAR (nav-sm) STYLING CORRECTIONS
+   ==================================================== */
+body.nav-sm .nav.side-menu>li>a {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    padding: 10px 5px !important;
+    text-align: center !important;
+    border-left: none !important;
+    min-height: 55px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: normal !important;
+}
+
+body.nav-sm .nav.side-menu>li>a i {
+    font-size: 18px !important;
+    margin-right: 0 !important;
+    margin-bottom: 4px !important;
+    display: block !important;
+    text-align: center !important;
+    width: auto !important;
+}
+
+/* Hide chevron icons, badges (such as "Yeni"), and secondary labels inside collapsed menu links */
+body.nav-sm .nav.side-menu>li>a span.fa,
+body.nav-sm .nav.side-menu>li>a span.label,
+body.nav-sm .nav.side-menu>li>a span.badge,
+body.nav-sm .nav.side-menu>li>a .label,
+body.nav-sm .nav.side-menu>li>a .badge,
+body.nav-sm .label-success,
+body.nav-sm .badge {
+    display: none !important;
+}
+
+/* Submenu layout correction in collapsed state */
+body.nav-sm .nav.side-menu>li>ul.nav.child_menu {
+    left: 70px !important;
+}
+
+
+/* ====================================================
+   IZBAN LOGO/SYMBOL STYLING & ANIMATION
+   ==================================================== */
+/* Selectors matching various logo image containers in different skins */
+.site_title img,
+.nav_title img,
+.navbar-brand img,
+.left_col .site_title img,
+.logo img,
+.site_title i,
+.nav_title i {
+    animation: izban-logo-animated 5s infinite ease-in-out !important;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+    display: inline-block !important;
+}
+
+.site_title:hover img,
+.nav_title:hover img,
+.navbar-brand:hover img,
+.left_col .site_title:hover img,
+.logo:hover img,
+.site_title:hover i,
+.nav_title:hover i {
+    animation-play-state: paused !important;
+    transform: scale(1.15) rotate(15deg) translateY(-2px) !important;
+    filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.9)) !important;
+}
+
+@keyframes izban-logo-animated {
+    0% {
+        transform: scale(1) translateY(0) rotate(0deg);
+        filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
+    }
+
+    25% {
+        transform: scale(1.06) translateY(-4px) rotate(3deg);
+        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
+    }
+
+    50% {
+        transform: scale(1) translateY(0) rotate(0deg);
+        filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
+    }
+
+    75% {
+        transform: scale(1.06) translateY(4px) rotate(-3deg);
+        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
+    }
+
+    100% {
+        transform: scale(1) translateY(0) rotate(0deg);
+        filter: drop-shadow(0 0 3px rgba(99, 102, 241, 0.3));
+    }
+}
