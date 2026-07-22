@@ -760,8 +760,6 @@ body.nav-sm .nav.side-menu>li>ul.nav.child_menu {
 .logo:hover img,
 .site_title:hover i,
 .nav_title:hover i {
-    animation-play-state: paused !important;
-    transform: scale(1.15) rotate(15deg) translateY(-2px) !important;
     filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.9)) !important;
 }
 

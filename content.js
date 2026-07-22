@@ -29,6 +29,18 @@ function injectHomepageButton() {
     }
 }
 
+// Disable Navigation when Clicking Logo Title wrapper link
+function disableLogoNavigation() {
+    const brandLinks = document.querySelectorAll('.site_title, .nav_title a');
+    brandLinks.forEach(link => {
+        link.removeAttribute('href');
+        link.style.cursor = 'default';
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+        }, true);
+    });
+}
+
 // Dark Mode Initialization & Storage
 function initializeDarkMode() {
     const isDark = localStorage.getItem('izban-dark-mode') === 'true';
@@ -111,6 +123,9 @@ function handleNavigation() {
 function handlePageLayout() {
     // AnaSayfa butonunu sol menüye ekle
     injectHomepageButton();
+
+    // Logo yönlendirmesini devre dışı bırak
+    disableLogoNavigation();
 
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();
