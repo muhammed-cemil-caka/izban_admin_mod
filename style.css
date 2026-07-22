@@ -154,6 +154,12 @@ span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
     /* Clear default theme rules */
     border-right: 1px solid #e2e8f0 !important;
     border-left: none !important;
+
+    /* Support side-by-side flex layout with mini charts */
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
 }
 
 .tile_stats_count:hover {
@@ -166,7 +172,6 @@ span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
     font-size: 13px !important;
     font-weight: 600 !important;
     color: #64748b !important;
-    /* Cool Slate Style */
     text-transform: none !important;
     letter-spacing: normal !important;
     display: block !important;
@@ -190,66 +195,84 @@ span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
     font-size: 11.5px !important;
     color: #64748b !important;
     margin-top: 6px !important;
-    display: flex !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 4px !important;
+    display: block !important;
+    /* Back to block flow to structure inline tags easily */
     position: relative !important;
+    line-height: 1.6 !important;
 }
 
-/* Forces all children elements to flow inline and clears manual positioning grids */
-.tile_stats_count .count_bottom * {
+/* Clear manual float and position offsets from default templates on list icons & badges */
+.tile_stats_count .count_bottom i {
     position: static !important;
     float: none !important;
     display: inline-block !important;
-    margin-right: 4px !important;
     vertical-align: middle !important;
+    font-style: normal !important;
+    margin-right: 4px !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: normal !important;
 }
 
-/* Styles the outer badge containers */
+/* Styles ONLY the outer colored text wrapper badges inside count_bottom */
 .tile_stats_count .count_bottom i.green,
 .tile_stats_count .count_bottom i.red,
 .tile_stats_count .count_bottom i.orange,
-.tile_stats_count .count_bottom i.yellow,
-.green,
-.red,
-.orange,
-.yellow {
+.tile_stats_count .count_bottom i.yellow {
     font-style: normal !important;
     font-weight: 700 !important;
     font-size: 10px !important;
-    padding: 2px 8px !important;
+    padding: 3px 8px !important;
     border-radius: 8px !important;
     display: inline-block !important;
-    margin-right: 4px !important;
+    margin-right: 6px !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: normal !important;
 }
 
-/* Resets padding/bg for nested icon tags inside the outer metric badge */
+/* Clean background/margins on recursive indicators nested in badges */
 .tile_stats_count .count_bottom i.green i,
-.tile_stats_count .count_bottom i.red i {
+.tile_stats_count .count_bottom i.red i,
+.tile_stats_count .count_bottom i.orange i,
+.tile_stats_count .count_bottom i.yellow i {
     padding: 0 !important;
     background: transparent !important;
     margin-right: 2px !important;
     display: inline-block !important;
+    color: inherit !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: normal !important;
 }
 
-/* Badge highlights based on status classes */
-.tile_stats_count .count_bottom i.green,
+/* Text-only coloring classes (DO NOT apply backgrounds or paddings globally!) */
 .green {
+    color: #15803d !important;
+}
+
+.red {
+    color: #b91c1c !important;
+}
+
+.orange,
+.yellow {
+    color: #b45309 !important;
+}
+
+/* Scoped Badge highlights */
+.tile_stats_count .count_bottom i.green {
     background: #dcfce7 !important;
     color: #15803d !important;
 }
 
-.tile_stats_count .count_bottom i.red,
-.red {
+.tile_stats_count .count_bottom i.red {
     background: #fee2e2 !important;
     color: #b91c1c !important;
 }
 
 .tile_stats_count .count_bottom i.orange,
-.tile_stats_count .count_bottom i.yellow,
-.orange,
-.yellow {
+.tile_stats_count .count_bottom i.yellow {
     background: #fef3c7 !important;
     color: #b45309 !important;
 }
@@ -298,6 +321,26 @@ span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
 
 .x_title .panel_toolbox>li>a:hover {
     color: #475569 !important;
+}
+
+/* Flex layout wrapper inside content columns */
+.izban-panel-flex-wrapper {
+    display: flex !important;
+    gap: 24px !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+@media (max-width: 992px) {
+    .izban-panel-flex-wrapper {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .izban-panel-chart-container {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
 }
 
 /* ----------------------------------------------------
@@ -400,4 +443,183 @@ select.form-control:focus {
 
 .btn-danger:hover {
     background: #dc2626 !important;
+}
+
+/* ----------------------------------------------------
+   DARK THEME SYSTEM MODIFICATIONS
+   ---------------------------------------------------- */
+body.dark-theme {
+    background-color: #0b0f19 !important;
+}
+
+body.dark-theme .right_col {
+    background: #0b0f19 !important;
+    color: #cbd5e1 !important;
+}
+
+/* Header & Navbar in Dark Theme */
+body.dark-theme .top_nav .nav_menu {
+    background: #0f172a !important;
+    border-bottom: 1px solid #1e293b !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-theme .top_nav .nav_menu .toggle a,
+body.dark-theme .top_nav .nav_menu .navbar-right a,
+body.dark-theme .top_nav .navbar-right .user-profile {
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme .top_nav .navbar-right .dropdown-menu {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+}
+
+body.dark-theme .top_nav .navbar-right .dropdown-menu li a {
+    color: #cbd5e1 !important;
+    background: #0f172a !important;
+}
+
+body.dark-theme .top_nav .navbar-right .dropdown-menu li a:hover {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+/* Top Navbar Toggle Button */
+#izban-dark-toggle-top {
+    background: #f1f5f9;
+}
+
+#izban-dark-toggle-top:hover {
+    background: #e2e8f0;
+}
+
+body.dark-theme #izban-dark-toggle-top {
+    background: #1e293b !important;
+}
+
+body.dark-theme #izban-dark-toggle-top:hover {
+    background: #334155 !important;
+}
+
+/* KPI Tiles in Dark Theme */
+body.dark-theme .tile_stats_count {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.dark-theme .tile_stats_count:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-theme .tile_stats_count .count_top {
+    color: #94a3b8 !important;
+}
+
+body.dark-theme .tile_stats_count .count {
+    color: #ffffff !important;
+}
+
+body.dark-theme .tile_stats_count .count_bottom {
+    color: #94a3b8 !important;
+}
+
+/* Panels (Cards) in Dark Theme */
+body.dark-theme .x_panel {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.dark-theme .x_panel:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-theme .x_title {
+    border-bottom: 1px solid #1e293b !important;
+}
+
+body.dark-theme .x_title h2 {
+    color: #ffffff !important;
+}
+
+body.dark-theme .x_title .panel_toolbox>li>a {
+    color: #64748b !important;
+}
+
+body.dark-theme .x_title .panel_toolbox>li>a:hover {
+    color: #cbd5e1 !important;
+}
+
+/* Forms & Select Dropdowns in Dark Theme */
+body.dark-theme select.form-control,
+body.dark-theme input.form-control {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #ffffff !important;
+}
+
+body.dark-theme select.form-control:focus,
+body.dark-theme input.form-control:focus {
+    border-color: #6366f1 !important;
+}
+
+body.dark-theme select.form-control option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+/* Tables in Dark Theme */
+body.dark-theme .table th {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    border-bottom: 2px solid #334155 !important;
+}
+
+body.dark-theme .table td {
+    color: #cbd5e1 !important;
+    border-bottom: 1px solid #1e293b !important;
+}
+
+body.dark-theme .table tr:hover td {
+    background: #1e293b !important;
+}
+
+/* Progress Charts in Dark Theme */
+body.dark-theme .izban-tile-pie-container svg circle[stroke="#f1f5f9"] {
+    stroke: #1e293b !important;
+}
+
+body.dark-theme .izban-tile-pie-container text {
+    fill: #f1f5f9 !important;
+}
+
+body.dark-theme .izban-panel-chart-container {
+    background: #0f172a !important;
+    border: 1px solid #1e293b !important;
+}
+
+body.dark-theme .izban-panel-chart-container div {
+    color: #94a3b8 !important;
+}
+
+/* Scrollbar styling in Dark Theme */
+body.dark-theme ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body.dark-theme ::-webkit-scrollbar-track {
+    background: #0b0f19;
+}
+
+body.dark-theme ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 5px;
+    border: 2px solid #0b0f19;
+}
+
+body.dark-theme ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
 }
