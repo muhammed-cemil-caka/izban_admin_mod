@@ -1001,3 +1001,24 @@ body.dark-theme td[style*="background-color"] {
 body.dark-theme tr:hover td {
     background-color: #1e293b !important;
 }
+
+/* ====================================================
+   DARK THEME CHART SVG & LEGEND TEXT COLOR OVERRIDES
+   ==================================================== */
+body.dark-theme svg text,
+body.dark-theme svg tspan,
+body.dark-theme .amcharts-chart-div svg text,
+body.dark-theme .amcharts-chart-div svg tspan,
+body.dark-theme .amChartsLegend svg text,
+body.dark-theme .amChartsLegend svg tspan {
+    fill: #cbd5e1 !important;
+}
+
+body.dark-theme .amcharts-chart-div,
+body.dark-theme .amcharts-chart-div *,
+body.dark-theme .amChartsLegend,
+body.dark-theme .amChartsLegend *,
+body.dark-theme .amcharts-legend-div,
+body.dark-theme .amcharts-legend-div * {
+    color: #cbd5e1 !important;
+}

@@ -216,6 +216,8 @@ function configureMessageDropdown(envelopeLi) {
     const sidebarInboxLink = Array.from(document.querySelectorAll('#sidebar-menu a, .side-menu a, .left_col a'))
         .find(a => {
             const text = a.textContent.toLowerCase();
+            const href = a.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return false;
             return text.includes('gelen kutusu') ||
                 text.includes('mesajlar') ||
                 text.includes('mesaj listesi') ||
@@ -225,6 +227,8 @@ function configureMessageDropdown(envelopeLi) {
     const sidebarSendLink = Array.from(document.querySelectorAll('#sidebar-menu a, .side-menu a, .left_col a'))
         .find(a => {
             const text = a.textContent.toLowerCase();
+            const href = a.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return false;
             return text.includes('yeni mesaj') ||
                 text.includes('mesaj gönder') ||
                 text.includes('mesaj gonder') ||
@@ -235,12 +239,16 @@ function configureMessageDropdown(envelopeLi) {
     const existingInboxLink = Array.from(msgList.querySelectorAll('a'))
         .find(a => {
             const text = a.textContent.toLowerCase();
+            const href = a.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return false;
             return !text.includes('gönder') && !text.includes('gonder') && !text.includes('yeni') && !text.includes('ekle');
         })?.getAttribute('href');
 
     const existingSendLink = Array.from(msgList.querySelectorAll('a'))
         .find(a => {
             const text = a.textContent.toLowerCase();
+            const href = a.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return false;
             return text.includes('yeni') || text.includes('gönder') || text.includes('gonder') || text.includes('ekle');
         })?.getAttribute('href') || sidebarSendLink || '/Mesaj/Yeni';
 
@@ -281,11 +289,11 @@ function configureMessageDropdown(envelopeLi) {
     actionLi.style.cssText = 'padding: 10px 16px !important; border-top: 1px solid #f1f5f9; display: flex !important; gap: 8px !important; justify-content: center !important; margin-top: 6px !important;';
 
     actionLi.innerHTML = `
-        <a href="${inboxUrl}" class="btn btn-sm btn-primary izban-btn-msg" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #6366f1 !important; border: none !important;">
+        <a href="${inboxUrl}" class="btn btn-sm btn-primary izban-btn-msg izban-btn-inbox" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #6366f1 !important; border: none !important;">
             <i class="fa fa-envelope" style="font-size: 11px; color: #ffffff !important; margin: 0 !important; width: auto !important; height: auto !important;"></i>
             <span style="color: #ffffff !important;">Gelen Kutusu</span>
         </a>
-        <a href="${existingSendLink}" class="btn btn-sm btn-success izban-btn-msg" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #10b981 !important; border: none !important;">
+        <a href="${existingSendLink}" class="btn btn-sm btn-success izban-btn-msg izban-btn-send" style="flex: 1; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px !important; border-radius: 6px !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; background: #10b981 !important; border: none !important;">
             <i class="fa fa-paper-plane" style="font-size: 11px; color: #ffffff !important; margin: 0 !important; width: auto !important; height: auto !important;"></i>
             <span style="color: #ffffff !important;">Yeni Gönder</span>
         </a>
@@ -300,6 +308,25 @@ function configureMessageDropdown(envelopeLi) {
     defaultFooters.forEach(fi => fi.remove());
 
     msgList.appendChild(actionLi);
+
+    // Setup explicit click listeners on custom action buttons to handle navigation robustly
+    const inboxBtn = actionLi.querySelector('.izban-btn-inbox');
+    const sendBtn = actionLi.querySelector('.izban-btn-send');
+
+    if (inboxBtn) {
+        inboxBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = inboxUrl;
+        });
+    }
+    if (sendBtn) {
+        sendBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = existingSendLink;
+        });
+    }
 }
 
 // Dark Mode Initialization & Storage
@@ -406,6 +433,7 @@ function handlePageLayout() {
 
         const topTextEl = tile.querySelector('.count_top');
         const topText = topTextEl ? (topTextEl.textContent || "").trim() : "";
+        const isComplaint = topText.toLowerCase().includes("şikayet") || topText.toLowerCase().includes("şikâyet");
         if (topText.includes("Profil") || tile.querySelector('select')) {
             tile.style.setProperty('flex-direction', 'column', 'important');
             tile.style.setProperty('align-items', 'stretch', 'important');
@@ -469,9 +497,11 @@ function handlePageLayout() {
         tile.appendChild(wrapper);
 
         // Pasta grafiğini ekleyelim
-        const div = document.createElement('div');
-        div.innerHTML = svgHTML;
-        tile.appendChild(div.firstElementChild);
+        if (!isComplaint) {
+            const div = document.createElement('div');
+            div.innerHTML = svgHTML;
+            tile.appendChild(div.firstElementChild);
+        }
 
         tile.style.display = 'flex';
         tile.style.flexDirection = 'row';
