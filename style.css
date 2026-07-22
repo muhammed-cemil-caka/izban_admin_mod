@@ -1526,3 +1526,272 @@ body.dark-theme .izban-select-search-wrapper .search-icon {
 body.dark-theme .izban-select-clear {
     color: #64748b !important;
 }
+
+/* ====================================================
+   3D EMBOSSED DESIGN SYSTEM - PANELS AND CARDS
+   ==================================================== */
+.x_panel,
+.well,
+.profile_view,
+.profile_details,
+.tile_stats_count {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+        0 2px 4px -1px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+        0 3px 0 0 #cbd5e1 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Specific margins and line corrections for 3D panels */
+.x_panel {
+    margin-bottom: 20px !important;
+}
+
+.tile_stats_count {
+    padding: 15px !important;
+    margin-bottom: 10px !important;
+    border-bottom: 4px solid #cbd5e1 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Dark mode overrides for 3D Panels & Cards */
+body.dark-theme .x_panel,
+body.dark-theme .well,
+body.dark-theme .profile_view,
+body.dark-theme .profile_details,
+body.dark-theme .tile_stats_count {
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+        0 3px 0 0 #0f172a !important;
+    border: 1px solid #334155 !important;
+    background-color: #1e293b !important;
+}
+
+body.dark-theme .tile_stats_count {
+    border-bottom: 4px solid #0f172a !important;
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ====================================================
+   3D EMBOSSED DESIGN SYSTEM - INPUTS AND SEARCH BARS
+   ==================================================== */
+.form-control,
+.izban-search-input,
+.izban-select-search-input,
+#izban-sidebar-search,
+select.form-control,
+textarea.form-control,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06),
+        0 1px 0 0 rgba(255, 255, 255, 0.8),
+        0 0 0 1px #cbd5e1 !important;
+    border: none !important;
+    background-color: #f8fafc !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.form-control:focus,
+.izban-search-input:focus,
+.izban-select-search-input:focus,
+#izban-sidebar-search:focus,
+select.form-control:focus,
+textarea.form-control:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    box-shadow: inset 0 2px 4px rgba(99, 102, 241, 0.06),
+        0 1px 0 0 rgba(255, 255, 255, 0.8),
+        0 0 0 2px #6366f1 !important;
+    background-color: #ffffff !important;
+}
+
+/* Dark mode overrides for 3D inputs */
+body.dark-theme .form-control,
+body.dark-theme .izban-search-input,
+body.dark-theme .izban-select-search-input,
+body.dark-theme #izban-sidebar-search,
+body.dark-theme select.form-control,
+body.dark-theme textarea.form-control,
+body.dark-theme input[type="text"],
+body.dark-theme input[type="password"],
+body.dark-theme input[type="email"] {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 1px 0 0 rgba(255, 255, 255, 0.05),
+        0 0 0 1px #334155 !important;
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .izban-search-input:focus,
+body.dark-theme .izban-select-search-input:focus,
+body.dark-theme #izban-sidebar-search:focus,
+body.dark-theme select.form-control:focus,
+body.dark-theme textarea.form-control:focus,
+body.dark-theme input[type="text"]:focus,
+body.dark-theme input[type="password"]:focus,
+body.dark-theme input[type="email"]:focus {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 1px 0 0 rgba(255, 255, 255, 0.05),
+        0 0 0 2px #6366f1 !important;
+    background-color: #1e293b !important;
+}
+
+/* ====================================================
+   3D EMBOSSED DESIGN SYSTEM - BUTTONS
+   ==================================================== */
+.btn {
+    position: relative !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    border-bottom: 3.5px solid rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.4) !important;
+    border-radius: 8px !important;
+    transition: all 0.1s ease !important;
+}
+
+.btn:active,
+.btn.active {
+    transform: translateY(1.5px) !important;
+    border-bottom-width: 1px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Colors enhancements for standard panels/buttons */
+.btn-primary {
+    background-color: #6366f1 !important;
+    border-color: #4f46e5 !important;
+    border-bottom-color: #3730a3 !important;
+}
+
+.btn-success {
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
+    border-bottom-color: #047857 !important;
+}
+
+.btn-danger {
+    background-color: #ef4444 !important;
+    border-color: #dc2626 !important;
+    border-bottom-color: #b91c1c !important;
+}
+
+/* Dark mode overrides for 3D buttons */
+body.dark-theme .btn {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-bottom: 3.5px solid rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme .btn:active,
+body.dark-theme .btn.active {
+    transform: translateY(1.5px) !important;
+    border-bottom-width: 1px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ====================================================
+   3D WARM LIGHT MODE PALETTE - BACKGROUNDS & PANELS
+   ==================================================== */
+body:not(.dark-theme),
+body:not(.dark-theme) .nav-md .container.body,
+body:not(.dark-theme) .right_col {
+    background-color: #f6efe2 !important;
+    /* Premium warm vanilla sand */
+}
+
+body:not(.dark-theme) .top_nav .nav_menu {
+    background-color: #faf6eb !important;
+    border-bottom: 2px solid #eadecb !important;
+    box-shadow: 0 4px 6px -2px rgba(184, 160, 130, 0.12) !important;
+}
+
+body:not(.dark-theme) .x_panel,
+body:not(.dark-theme) .well,
+body:not(.dark-theme) .profile_view,
+body:not(.dark-theme) .profile_details,
+body:not(.dark-theme) .tile_stats_count {
+    background-color: #faf7f2 !important;
+    /* Cream card background */
+    border: 1px solid #e3d2bd !important;
+    box-shadow: 0 8px 16px -4px rgba(184, 160, 130, 0.22),
+        0 4px 6px -2px rgba(184, 160, 130, 0.12),
+        inset 0 2px 0 0 #ffffff,
+        0 4px 0 0 #d9c4aa !important;
+    /* Thick warm sandy 3D base */
+}
+
+/* ====================================================
+   3D WARM LIGHT MODE PALETTE - INPUTS & SEARCH BARS
+   ==================================================== */
+body:not(.dark-theme) .form-control,
+body:not(.dark-theme) .izban-search-input,
+body:not(.dark-theme) .izban-select-search-input,
+body:not(.dark-theme) #izban-sidebar-search,
+body:not(.dark-theme) select.form-control,
+body:not(.dark-theme) textarea.form-control,
+body:not(.dark-theme) input[type="text"],
+body:not(.dark-theme) input[type="password"],
+body:not(.dark-theme) input[type="email"] {
+    background-color: #fbf9f5 !important;
+    box-shadow: inset 0 2px 5px rgba(184, 160, 130, 0.25),
+        0 1px 0 0 #ffffff,
+        0 0 0 1px #e3d2bd !important;
+    color: #5c4a37 !important;
+}
+
+body:not(.dark-theme) .form-control:focus,
+body:not(.dark-theme) .izban-search-input:focus,
+body:not(.dark-theme) .izban-select-search-input:focus,
+body:not(.dark-theme) #izban-sidebar-search:focus,
+body:not(.dark-theme) select.form-control:focus,
+body:not(.dark-theme) textarea.form-control:focus,
+body:not(.dark-theme) input[type="text"]:focus,
+body:not(.dark-theme) input[type="password"]:focus,
+body:not(.dark-theme) input[type="email"]:focus {
+    background-color: #ffffff !important;
+    box-shadow: inset 0 2px 5px rgba(184, 160, 130, 0.15),
+        0 1px 0 0 #ffffff,
+        0 0 0 2px #d97706 !important;
+}
+
+/* ====================================================
+   3D WARM LIGHT MODE PALETTE - BUTTONS
+   ==================================================== */
+body:not(.dark-theme) .btn {
+    color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-bottom: 4px solid rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 6px 10px rgba(184, 160, 130, 0.25),
+        inset 0 1.5px 0 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+body:not(.dark-theme) .btn-default {
+    color: #5c4a37 !important;
+    background-color: #faf7f2 !important;
+    border-color: #e3d2bd !important;
+    border-bottom-color: #cbb9a3 !important;
+}
+
+body:not(.dark-theme) .btn-primary {
+    background-color: #d97706 !important;
+    border-color: #b45309 !important;
+    border-bottom-color: #78350f !important;
+}
+
+body:not(.dark-theme) .btn-success {
+    background-color: #059669 !important;
+    border-color: #047857 !important;
+    border-bottom-color: #064e3b !important;
+}
