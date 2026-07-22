@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "İZBAN Admin Dashboard Modernizer",
+    "version": "1.0",
+    "description": "İZBAN dahili admin paneli için modern UI/UX ve grafik arayüzü.",
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.izban.net/*",
+                "http://*.izban.net/*"
+            ],
+            "css": [
+                "style.css"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
+}

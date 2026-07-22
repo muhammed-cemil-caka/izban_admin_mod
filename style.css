@@ -1,0 +1,362 @@
+/* Google Fonts - Inter Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* global font overrides & smooth scrolling */
+body,
+.right_col,
+.x_panel,
+.tile_stats_count,
+.nav.side-menu,
+.top_nav,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+td,
+th,
+select,
+input,
+button {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Background Layout Refined */
+.right_col {
+    background: #f8fafc !important;
+    /* Modern canvas background color (Slate 50) */
+    padding: 24px !important;
+}
+
+/* ----------------------------------------------------
+   SIDEBAR NAVIGATION SYSTEM (Slate Dark Style)
+   ---------------------------------------------------- */
+.left_col {
+    background: #0f172a !important;
+    /* Premium dark slate background (Slate 900) */
+    border-right: 1px solid #1e293b !important;
+}
+
+.sidebar-footer {
+    background: #0f172a !important;
+    border-top: 1px solid #1e293b !important;
+}
+
+.sidebar-footer a {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    transition: all 0.2s ease !important;
+}
+
+.sidebar-footer a:hover {
+    color: #ffffff !important;
+    background: #334155 !important;
+}
+
+.nav.side-menu>li>a {
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    color: #94a3b8 !important;
+    padding: 12px 20px !important;
+    border-left: 3px solid transparent !important;
+    transition: all 0.2s ease !important;
+}
+
+.nav.side-menu>li>a:hover {
+    color: #ffffff !important;
+    background: #1e293b !important;
+}
+
+.nav.side-menu>li.active>a {
+    color: #ffffff !important;
+    background: #1e293b !important;
+    border-left-color: #6366f1 !important;
+    /* Sleek indigo highlight indicator */
+    font-weight: 600 !important;
+}
+
+.nav.child_menu {
+    background: #090d16 !important;
+}
+
+.nav.child_menu li a {
+    color: #64748b !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    transition: all 0.2s ease !important;
+}
+
+.nav.child_menu li a:hover,
+.nav.child_menu li.active a {
+    color: #ffffff !important;
+    background: #0f172a !important;
+}
+
+/* ----------------------------------------------------
+   TOP HEADER NAVIGATION
+   ---------------------------------------------------- */
+.top_nav .nav_menu {
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
+    padding: 12px 24px !important;
+}
+
+.top_nav .nav_menu .toggle a {
+    color: #475569 !important;
+    transition: color 0.15s ease !important;
+}
+
+.top_nav .nav_menu .toggle a:hover {
+    color: #0f172a !important;
+}
+
+/* ----------------------------------------------------
+   KPI METRICS / TOP TILES (Dynamic Flex/Grid Modern layout)
+   ---------------------------------------------------- */
+.tile_count {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 16px !important;
+    margin-bottom: 28px !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+.tile_stats_count {
+    flex: 1 1 200px !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 16px 20px !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02), 0 2px 4px -2px rgba(15, 23, 42, 0.02) !important;
+    margin-bottom: 0 !important;
+    position: relative !important;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    /* Clear default theme rules */
+    border-right: 1px solid #e2e8f0 !important;
+    border-left: none !important;
+}
+
+.tile_stats_count:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -4px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Counter Title Styling */
+.tile_stats_count .count_top {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    /* Cool Slate Style */
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    display: block !important;
+    margin-bottom: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Counter Metric Value */
+.tile_stats_count .count {
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    line-height: 1.25 !important;
+    margin: 4px 0 !important;
+}
+
+/* Subtext Layout */
+.tile_stats_count .count_bottom {
+    font-size: 11.5px !important;
+    color: #64748b !important;
+    margin-top: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+}
+
+/* Modern Badge Containers styled from traditional colored texts */
+.tile_stats_count .count_bottom i {
+    font-style: normal !important;
+    font-weight: 700 !important;
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+    margin-right: 0 !important;
+}
+
+/* Badge highlights based on status classes */
+.tile_stats_count .count_bottom i.green,
+.green {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+}
+
+.tile_stats_count .count_bottom i.red,
+.red {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+.tile_stats_count .count_bottom i.orange,
+.tile_stats_count .count_bottom i.yellow,
+.orange,
+.yellow {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+}
+
+/* ----------------------------------------------------
+   PANELS & CARDS (x_panel)
+   ---------------------------------------------------- */
+.x_panel {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 20px 24px !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02), 0 2px 4px -2px rgba(15, 23, 42, 0.02) !important;
+    margin-bottom: 24px !important;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.x_panel:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -4px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Card titles */
+.x_title {
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 18px !important;
+}
+
+.x_title h2 {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+}
+
+.x_title .panel_toolbox {
+    min-width: unset !important;
+    margin-top: 2px !important;
+}
+
+.x_title .panel_toolbox>li>a {
+    color: #94a3b8 !important;
+    transition: color 0.15s ease !important;
+}
+
+.x_title .panel_toolbox>li>a:hover {
+    color: #475569 !important;
+}
+
+/* ----------------------------------------------------
+   TABLES (Clean and polished tables)
+   ---------------------------------------------------- */
+.table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    margin-top: 8px !important;
+}
+
+.table th {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 12px 14px !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    border-top: none !important;
+}
+
+.table td {
+    padding: 12px 14px !important;
+    color: #334155 !important;
+    font-size: 13.5px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.table tr:hover td {
+    background: #f8fafc !important;
+}
+
+/* ----------------------------------------------------
+   FORM INPUTS AND DROPDOWNS
+   ---------------------------------------------------- */
+select.form-control {
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    color: #334155 !important;
+    background-color: #ffffff !important;
+    height: 38px !important;
+    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03) !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+select.form-control:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* ----------------------------------------------------
+   BUTTON STYLING (Modern Flat Accent Colors)
+   ---------------------------------------------------- */
+.btn {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    border: none !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-success {
+    background: #10b981 !important;
+    color: #ffffff !important;
+}
+
+.btn-success:hover {
+    background: #059669 !important;
+}
+
+.btn-primary {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover {
+    background: #4338ca !important;
+}
+
+.btn-default {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+}
+
+.btn-default:hover {
+    background: #e2e8f0 !important;
+}
+
+.btn-danger {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+.btn-danger:hover {
+    background: #dc2626 !important;
+}
