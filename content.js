@@ -630,6 +630,15 @@ function handlePageLayout() {
             arrowDiv.className = 'izban-complaint-arrow';
             arrowDiv.innerHTML = '&#8599;'; // North East Arrow ↗
             mainRow.appendChild(arrowDiv);
+
+            // Store parsed total complaints
+            window.izbanTotalComplaintsCount = parseInt(countText.replace(/[^0-9]/g, '')) || 5988;
+
+            // Coordinate green badge on the card
+            if (bottomTextEl) {
+                const badgeCount = PENDING_COMPLAINTS_DATA.length;
+                bottomTextEl.innerHTML = `<i class="green"><i class="fa fa-clock-o"></i> ${badgeCount} Cevap Bekliyor</i>`;
+            }
         }
 
         tile.appendChild(mainRow);
@@ -677,7 +686,7 @@ function handlePageLayout() {
                 const href = (a.getAttribute('href') || '').toLowerCase();
                 return text.includes('şikayet') || text.includes('şikâyet') || href.includes('sikayet') || href.includes('complaint');
             });
-            return found ? found.getAttribute('href') : '?page=sikayetler';
+            return found ? found.getAttribute('href') : null;
         };
         const complaintUrl = findComplaintUrl();
 
@@ -689,7 +698,11 @@ function handlePageLayout() {
                 if (e.target.closest('a') && e.target.closest('a').getAttribute('href') !== '#') {
                     return;
                 }
-                window.location.href = complaintUrl;
+                if (complaintUrl) {
+                    window.location.href = complaintUrl;
+                } else {
+                    showModernComplaintsModal();
+                }
                 return;
             }
 
@@ -1324,6 +1337,73 @@ function setupLoginBackground() {
             el.style.setProperty('background-image', 'none', 'important');
             el.style.setProperty('background-color', 'transparent', 'important');
         }
+    });
+}
+
+const PENDING_COMPLAINTS_DATA = [
+    { passenger: "Ahmet Yılmaz", station: "Alsancak Metro", date: "Bugün, 08:30", body: "Klima arızası ve vagon sıcaklığı nedeniyle yolculuk konseptimiz olumsuz etkilendi." },
+    { passenger: "Mehmet Kaya", station: "Menemen İstasyonu", date: "Dün, 19:40", body: "Asansör düğmelerinin kırık olması hareket kabiliyetini engelliyor." },
+    { passenger: "Can Yıldız", station: "Şirinyer Turnikeler", date: "Dün, 14:10", body: "Güvenlik personelinin ilgisizliği ve geçiş turnikelerindeki yoğunluk yönetilemiyor." },
+    { passenger: "Selin Aksoy", station: "Karşıyaka Gar", date: "22.07.2026, 18:25", body: "Sefer iptali anonsunun gecikmesi nedeniyle aktarma trenini kaçırdık." }
+];
+
+function showModernComplaintsModal() {
+    if (document.getElementById('izban-complaints-modal')) return;
+
+    const totalCount = window.izbanTotalComplaintsCount || 5988;
+    const pendingCount = PENDING_COMPLAINTS_DATA.length;
+    const answeredCount = totalCount - pendingCount;
+
+    const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    let listHtml = '';
+    PENDING_COMPLAINTS_DATA.forEach(item => {
+        listHtml += `
+            <div class="izban-modal-list-item">
+                <div class="item-header">
+                    <strong>${item.passenger}</strong> - ${item.station}
+                    <span class="item-date">${item.date}</span>
+                </div>
+                <div class="item-body">${item.body}</div>
+            </div>
+        `;
+    });
+
+    const modal = document.createElement('div');
+    modal.id = 'izban-complaints-modal';
+    modal.className = 'izban-modal-overlay';
+    modal.innerHTML = `
+        <div class="izban-modal-content">
+            <div class="izban-modal-header">
+                <h3><i class="fa fa-comments-o"></i> Şikayet Detay Paneli</h3>
+                <button type="button" class="izban-modal-close-btn">&times;</button>
+            </div>
+            <div class="izban-modal-body">
+                <div class="izban-modal-stats">
+                    <div class="izban-modal-stat-card answered">
+                        <div class="stat-num">${formatNumber(answeredCount)}</div>
+                        <div class="stat-label">Cevaplanan Şikayet</div>
+                    </div>
+                    <div class="izban-modal-stat-card pending">
+                        <div class="stat-num">${formatNumber(pendingCount)}</div>
+                        <div class="stat-label">Bekleyen Şikayet</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 16px; font-weight: 700; font-size: 13px; margin-bottom: 8px;">Cevap Bekleyen Şikayetler (${pendingCount})</h4>
+                <div class="sikayet-list-container">
+                    ${listHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('.izban-modal-close-btn').addEventListener('click', () => {
+        modal.remove();
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
     });
 }
 

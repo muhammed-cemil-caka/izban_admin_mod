@@ -2099,3 +2099,233 @@ body.dark-theme .izban-reply-box-inner {
 .izban-reply-accordion-row {
     background-color: transparent !important;
 }
+
+/* ====================================================
+   MODERN COMPLAINTS DETAY MODAL
+   ==================================================== */
+.izban-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10000 !important;
+    animation: fadeIn 0.2s ease-out !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.izban-modal-content {
+    width: 90% !important;
+    max-width: 500px !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-sizing: border-box !important;
+}
+
+.izban-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    flex: 1 !important;
+}
+
+body:not(.dark-theme) .izban-modal-content {
+    background-color: #faf7f2 !important;
+    border: 1px solid #e3d2bd !important;
+    box-shadow: 0 20px 40px rgba(184, 160, 130, 0.25),
+        inset 0 1px 0 0 #ffffff !important;
+}
+
+body.dark-theme .izban-modal-content {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.izban-modal-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 16px !important;
+}
+
+body.dark-theme .izban-modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.izban-modal-header h3 {
+    margin: 0 !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.2px !important;
+}
+
+body:not(.dark-theme) .izban-modal-header h3 {
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .izban-modal-header h3 {
+    color: #cbd5e1 !important;
+}
+
+.izban-modal-close-btn {
+    background: transparent !important;
+    border: none !important;
+    font-size: 24px !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    transition: color 0.15s ease !important;
+}
+
+body:not(.dark-theme) .izban-modal-close-btn {
+    color: #8e7a63 !important;
+}
+
+body.dark-theme .izban-modal-close-btn {
+    color: #94a3b8 !important;
+}
+
+.izban-modal-close-btn:hover {
+    color: #ef4444 !important;
+}
+
+.izban-modal-stats {
+    display: flex !important;
+    gap: 12px !important;
+    margin-bottom: 18px !important;
+}
+
+.izban-modal-stat-card {
+    flex: 1 !important;
+    padding: 14px 10px !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+}
+
+body:not(.dark-theme) .izban-modal-stat-card.answered {
+    background: rgba(16, 185, 129, 0.06) !important;
+    border: 1px solid rgba(16, 185, 129, 0.15) !important;
+}
+
+body:not(.dark-theme) .izban-modal-stat-card.pending {
+    background: rgba(239, 68, 68, 0.06) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+}
+
+body.dark-theme .izban-modal-stat-card.answered {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+}
+
+body.dark-theme .izban-modal-stat-card.pending {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+}
+
+.stat-num {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+}
+
+.izban-modal-stat-card.answered .stat-num {
+    color: #10b981 !important;
+}
+
+.izban-modal-stat-card.pending .stat-num {
+    color: #ef4444 !important;
+}
+
+.stat-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    opacity: 0.8 !important;
+    margin-top: 3px !important;
+}
+
+body:not(.dark-theme) .stat-label {
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .stat-label {
+    color: #cbd5e1 !important;
+}
+
+.sikayet-list-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+    max-height: 340px !important;
+    overflow-y: auto !important;
+    padding-right: 8px !important;
+}
+
+/* Custom Scrollbar for complaints list */
+.sikayet-list-container::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+.sikayet-list-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 4px !important;
+}
+
+.sikayet-list-container::-webkit-scrollbar-thumb {
+    background: #3b82f6 !important;
+    border-radius: 4px !important;
+}
+
+.sikayet-list-container::-webkit-scrollbar-thumb:hover {
+    background: #60a5fa !important;
+}
+
+.izban-modal-list-item {
+    padding: 12px !important;
+    border-radius: 8px !important;
+}
+
+body:not(.dark-theme) .izban-modal-list-item {
+    background: #faf7f2 !important;
+    border: 1px solid #e3d2bd !important;
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .izban-modal-list-item {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+}
+
+.item-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    margin-bottom: 5px !important;
+}
+
+.item-date {
+    font-weight: 600 !important;
+    font-size: 9.5px !important;
+    opacity: 0.65 !important;
+}
+
+.item-body {
+    font-size: 11.5px !important;
+    line-height: 1.45 !important;
+    opacity: 0.8 !important;
+}
