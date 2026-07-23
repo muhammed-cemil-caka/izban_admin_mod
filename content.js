@@ -664,7 +664,6 @@ function handlePageLayout() {
             });
 
             detailsPanel.innerHTML = `
-                <button type="button" class="izban-tile-details-close">&times;</button>
                 <div class="izban-tile-details-inner">
                     ${detailsRowsHtml}
                 </div>
@@ -710,20 +709,6 @@ function handlePageLayout() {
                 return;
             }
 
-            // Close button click
-            const closeBtn = e.target.closest('.izban-tile-details-close');
-            if (closeBtn) {
-                e.stopPropagation();
-                const panel = closeBtn.closest('.izban-tile-details');
-                if (panel) {
-                    panel.classList.remove('open');
-                }
-                const tile = closeBtn.closest('.tile_stats_count');
-                if (tile) {
-                    tile.classList.remove('is-expanded');
-                }
-                return;
-            }
 
             // Pie container click or main row click
             const mainRow = e.target.closest('.izban-tile-main-row');
