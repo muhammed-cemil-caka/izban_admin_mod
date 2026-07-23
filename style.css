@@ -2352,12 +2352,12 @@ body.dark-theme .izban-modal-list-item {
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     border-radius: 6px !important;
-    padding: 6px !important;
-    min-width: 140px !important;
+    padding: 6px 10px !important;
+    min-width: 170px !important;
     outline: none !important;
     box-shadow: none !important;
-    height: 96px !important;
-    /* height adjusted to display 4 items */
+    height: 38px !important;
+    cursor: pointer !important;
     transition: all 0.15s ease !important;
 }
 
@@ -2496,12 +2496,13 @@ body.dark-theme .izban-modal-list-item {
 #is-emri-filter-toolbar select#filter-kategori,
 #kapali-is-emri-filter-toolbar select#kapali-filter-istasyon,
 #kapali-is-emri-filter-toolbar select#kapali-filter-kategori {
+    height: 38px !important;
     min-width: 170px !important;
-    padding: 8px 12px !important;
-    background-color: #1e293b !important;
-    color: #ffffff !important;
+    background: #1e293b !important;
+    color: #fff !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     border-radius: 6px !important;
+    padding: 6px 10px !important;
     cursor: pointer !important;
     z-index: 99999 !important;
 }

@@ -1265,7 +1265,10 @@ function initializeSidebarSearch() {
 }
 
 function initializeSelectMultipleSearch() {
-    const selects = document.querySelectorAll('select[multiple]');
+    const selects = Array.from(document.querySelectorAll('select[multiple]')).filter(select => {
+        const id = select.id || '';
+        return !id.includes('filter') && !select.closest('#is-emri-filter-toolbar') && !select.closest('#kapali-is-emri-filter-toolbar') && !select.closest('#yolcu-filter-toolbar');
+    });
     selects.forEach((select, idx) => {
         if (select.dataset.searchInjected === 'true') return;
         select.dataset.searchInjected = 'true';
@@ -1730,10 +1733,10 @@ function initYolcuSayilariFilter() {
         });
 
         toolbar.innerHTML = `
-            <select id="yolcu-year-select" multiple size="4" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: auto; min-width: 140px;">
+            <select id="yolcu-year-select" multiple size="1" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: 38px; min-width: 170px; cursor: pointer;">
                 ${yearOptions}
             </select>
-            <select id="yolcu-month-select" multiple size="4" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: auto; min-width: 140px;">
+            <select id="yolcu-month-select" multiple size="1" style="padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: 38px; min-width: 170px; cursor: pointer;">
                 <option value="ocak">Ocak</option>
                 <option value="şubat">Şubat</option>
                 <option value="mart">Mart</option>
@@ -1747,7 +1750,7 @@ function initYolcuSayilariFilter() {
                 <option value="kasım">Kasım</option>
                 <option value="aralık">Aralık</option>
             </select>
-            <button id="yolcu-clear-filter" style="padding: 6px 12px; border-radius: 6px; background: #ef4444; color: #fff; border: none; cursor: pointer; height: 38px;">Temizle</button>
+            <button id="yolcu-clear-filter" style="padding: 6px 16px; border-radius: 6px; background: #ef4444; color: #fff; border: none; cursor: pointer; height: 38px;">Temizle</button>
         `;
 
         // Prepend toolbar to x_content
@@ -2122,13 +2125,13 @@ function initAcikIsEmriFilter() {
             </div>
             <div class="filter-item">
                 <span class="filter-label">İSTASYON SEÇ</span>
-                <select id="filter-istasyon">
+                <select id="filter-istasyon" multiple size="1">
                     ${istasyonOptions}
                 </select>
             </div>
             <div class="filter-item">
                 <span class="filter-label">KATEGORİ SEÇ</span>
-                <select id="filter-kategori">
+                <select id="filter-kategori" multiple size="1">
                     ${kategoriOptions}
                 </select>
             </div>
@@ -2153,8 +2156,8 @@ function initAcikIsEmriFilter() {
         const applyFilters = () => {
             const startVal = dateStartInput.value;
             const endVal = dateEndInput.value;
-            const istasyonVal = istasyonSelect.value.trim();
-            const kategoriVal = kategoriSelect.value.trim();
+            const selectedStations = Array.from(istasyonSelect.selectedOptions).map(opt => opt.value);
+            const selectedCategories = Array.from(kategoriSelect.selectedOptions).map(opt => opt.value);
             const idFormVal = turkishToLower(idFormInput.value.trim());
 
             const currentDataRows = table.querySelectorAll('tbody tr');
@@ -2215,15 +2218,17 @@ function initAcikIsEmriFilter() {
                 }
 
                 // Station match
-                if (istasyonVal && cells[istasyonColIdx]) {
+                const activeStations = selectedStations.filter(v => v !== "");
+                if (activeStations.length > 0 && cells[istasyonColIdx]) {
                     const stationText = cells[istasyonColIdx].textContent.trim();
-                    if (stationText !== istasyonVal) isMatched = false;
+                    if (!activeStations.includes(stationText)) isMatched = false;
                 }
 
                 // Category match
-                if (kategoriVal && cells[kategoriColIdx]) {
+                const activeCategories = selectedCategories.filter(v => v !== "");
+                if (activeCategories.length > 0 && cells[kategoriColIdx]) {
                     const categoryText = cells[kategoriColIdx].textContent.trim();
-                    if (categoryText !== kategoriVal) isMatched = false;
+                    if (!activeCategories.includes(categoryText)) isMatched = false;
                 }
 
                 // ID / Form No search
@@ -2247,8 +2252,8 @@ function initAcikIsEmriFilter() {
         clearAllBtn.addEventListener('click', () => {
             dateStartInput.value = '';
             dateEndInput.value = '';
-            istasyonSelect.value = '';
-            kategoriSelect.value = '';
+            Array.from(istasyonSelect.options).forEach(opt => opt.selected = false);
+            Array.from(kategoriSelect.options).forEach(opt => opt.selected = false);
             idFormInput.value = '';
             applyFilters();
         });
@@ -2428,13 +2433,13 @@ function initKapaliIsEmriFilter() {
             </div>
             <div class="filter-item">
                 <span class="filter-label">İSTASYON SEÇ</span>
-                <select id="kapali-filter-istasyon">
+                <select id="kapali-filter-istasyon" multiple size="1">
                     ${istasyonOptions}
                 </select>
             </div>
             <div class="filter-item">
                 <span class="filter-label">KATEGORİ SEÇ</span>
-                <select id="kapali-filter-kategori">
+                <select id="kapali-filter-kategori" multiple size="1">
                     ${kategoriOptions}
                 </select>
             </div>
@@ -2459,8 +2464,8 @@ function initKapaliIsEmriFilter() {
         const applyFilters = () => {
             const startVal = dateStartInput.value;
             const endVal = dateEndInput.value;
-            const istasyonVal = istasyonSelect.value.trim();
-            const kategoriVal = kategoriSelect.value.trim();
+            const selectedStations = Array.from(istasyonSelect.selectedOptions).map(opt => opt.value);
+            const selectedCategories = Array.from(kategoriSelect.selectedOptions).map(opt => opt.value);
             const idFormVal = turkishToLower(idFormInput.value.trim());
 
             const currentDataRows = table.querySelectorAll('tbody tr');
@@ -2521,15 +2526,17 @@ function initKapaliIsEmriFilter() {
                 }
 
                 // Station match
-                if (istasyonVal && cells[istasyonColIdx]) {
+                const activeStations = selectedStations.filter(v => v !== "");
+                if (activeStations.length > 0 && cells[istasyonColIdx]) {
                     const stationText = cells[istasyonColIdx].textContent.trim();
-                    if (stationText !== istasyonVal) isMatched = false;
+                    if (!activeStations.includes(stationText)) isMatched = false;
                 }
 
                 // Category match
-                if (kategoriVal && cells[kategoriColIdx]) {
+                const activeCategories = selectedCategories.filter(v => v !== "");
+                if (activeCategories.length > 0 && cells[kategoriColIdx]) {
                     const categoryText = cells[kategoriColIdx].textContent.trim();
-                    if (categoryText !== kategoriVal) isMatched = false;
+                    if (!activeCategories.includes(categoryText)) isMatched = false;
                 }
 
                 // ID / Form No search
@@ -2553,8 +2560,8 @@ function initKapaliIsEmriFilter() {
         clearAllBtn.addEventListener('click', () => {
             dateStartInput.value = '';
             dateEndInput.value = '';
-            istasyonSelect.value = '';
-            kategoriSelect.value = '';
+            Array.from(istasyonSelect.options).forEach(opt => opt.selected = false);
+            Array.from(kategoriSelect.options).forEach(opt => opt.selected = false);
             idFormInput.value = '';
             applyFilters();
         });
