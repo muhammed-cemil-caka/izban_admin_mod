@@ -2538,3 +2538,49 @@ body.dark-theme .izban-modal-list-item {
 #kapali-is-emri-filter-toolbar button#kapali-filter-clear-all:hover {
     background: #dc2626 !important;
 }
+
+/* Custom Dropdown Expansion & Alignment */
+#is-emri-filter-toolbar .filter-item,
+#kapali-is-emri-filter-toolbar .filter-item,
+#yolcu-filter-toolbar .filter-item {
+    position: relative !important;
+}
+
+select.izban-dropdown-expanded {
+    height: auto !important;
+    position: absolute !important;
+    z-index: 100000 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Table Total/Count indicator cards */
+.izban-table-summary {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    padding: 10px 16px !important;
+    border-radius: 6px !important;
+    margin-bottom: 12px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: inline-block !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.izban-table-summary .summary-value {
+    color: #3b82f6 !important;
+    font-size: 16px !important;
+    margin-left: 6px !important;
+    font-family: monospace !important;
+}
+
+/* Light theme overrides for total cards */
+body:not(.dark-theme) .izban-table-summary {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+}
+
+body:not(.dark-theme) .izban-table-summary .summary-value {
+    color: #2563eb !important;
+}
