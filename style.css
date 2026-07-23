@@ -2425,10 +2425,11 @@ body.dark-theme .izban-modal-list-item {
     background: #dc2626 !important;
 }
 
-/* ====================================================
-   AÇIK İŞ EMRİ LISTESI MULTI-FILTER TOOLBAR (PHASE 24)
-   ==================================================== */
-#is-emri-filter-toolbar {
+/* =======================================================================
+   AÇIK & KAPALI İŞ EMRİ LISTESI MULTI-FILTER TOOLBARS (PHASE 24 & 26)
+   ======================================================================= */
+#is-emri-filter-toolbar,
+#kapali-is-emri-filter-toolbar {
     margin-bottom: 15px !important;
     display: flex !important;
     flex-wrap: wrap !important;
@@ -2441,24 +2442,29 @@ body.dark-theme .izban-modal-list-item {
     transition: all 0.2s ease !important;
 }
 
-#is-emri-filter-toolbar .filter-item {
+#is-emri-filter-toolbar .filter-item,
+#kapali-is-emri-filter-toolbar .filter-item {
     display: flex !important;
     flex-direction: column !important;
     gap: 4px !important;
 }
 
-#is-emri-filter-toolbar .filter-search-grow {
+#is-emri-filter-toolbar .filter-search-grow,
+#kapali-is-emri-filter-toolbar .filter-search-grow {
     flex: 1 !important;
 }
 
-#is-emri-filter-toolbar .filter-label {
+#is-emri-filter-toolbar .filter-label,
+#kapali-is-emri-filter-toolbar .filter-label {
     font-size: 11px !important;
     font-weight: 700 !important;
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
 #is-emri-filter-toolbar input,
-#is-emri-filter-toolbar select {
+#is-emri-filter-toolbar select,
+#kapali-is-emri-filter-toolbar input,
+#kapali-is-emri-filter-toolbar select {
     height: 36px !important;
     padding: 6px 10px !important;
     font-size: 13px !important;
@@ -2472,37 +2478,45 @@ body.dark-theme .izban-modal-list-item {
     transition: all 0.15s ease !important;
 }
 
-#is-emri-filter-toolbar input[type="text"] {
+#is-emri-filter-toolbar input[type="text"],
+#kapali-is-emri-filter-toolbar input[type="text"] {
     background: rgba(0, 0, 0, 0.3) !important;
     width: 100% !important;
 }
 
 #is-emri-filter-toolbar input:focus,
-#is-emri-filter-toolbar select:focus {
+#is-emri-filter-toolbar select:focus,
+#kapali-is-emri-filter-toolbar input:focus,
+#kapali-is-emri-filter-toolbar select:focus {
     border-color: #3b82f6 !important;
     background: #243249 !important;
 }
 
 #is-emri-filter-toolbar select#filter-istasyon,
-#is-emri-filter-toolbar select#filter-kategori {
+#is-emri-filter-toolbar select#filter-kategori,
+#kapali-is-emri-filter-toolbar select#kapali-filter-istasyon,
+#kapali-is-emri-filter-toolbar select#kapali-filter-kategori {
     min-width: 170px !important;
     padding: 8px 12px !important;
-    background: #1e293b !important;
+    background-color: #1e293b !important;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     border-radius: 6px !important;
     cursor: pointer !important;
-    z-index: 10 !important;
+    z-index: 99999 !important;
 }
 
 #is-emri-filter-toolbar select#filter-istasyon option,
-#is-emri-filter-toolbar select#filter-kategori option {
-    background: #1e293b !important;
-    color: #ffffff !important;
+#is-emri-filter-toolbar select#filter-kategori option,
+#kapali-is-emri-filter-toolbar select#kapali-filter-istasyon option,
+#kapali-is-emri-filter-toolbar select#kapali-filter-kategori option {
+    background-color: #1e293b;
+    color: #ffffff;
 }
 
 /* Clear Button styling */
-#is-emri-filter-toolbar button#filter-clear-all {
+#is-emri-filter-toolbar button#filter-clear-all,
+#kapali-is-emri-filter-toolbar button#kapali-filter-clear-all {
     height: 36px !important;
     padding: 0 16px !important;
     font-size: 13px !important;
@@ -2519,6 +2533,7 @@ body.dark-theme .izban-modal-list-item {
     transition: all 0.15s ease !important;
 }
 
-#is-emri-filter-toolbar button#filter-clear-all:hover {
+#is-emri-filter-toolbar button#filter-clear-all:hover,
+#kapali-is-emri-filter-toolbar button#kapali-filter-clear-all:hover {
     background: #dc2626 !important;
 }

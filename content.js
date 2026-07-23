@@ -1851,6 +1851,7 @@ function initYolcuSayilariFilter() {
         const result = originalPushState.apply(this, arguments);
         startYolcuPollingLoop();
         startAcikIsEmriPollingLoop();
+        startKapaliIsEmriPollingLoop();
         return result;
     };
 
@@ -1858,12 +1859,14 @@ function initYolcuSayilariFilter() {
         const result = originalReplaceState.apply(this, arguments);
         startYolcuPollingLoop();
         startAcikIsEmriPollingLoop();
+        startKapaliIsEmriPollingLoop();
         return result;
     };
 
     window.addEventListener('popstate', () => {
         startYolcuPollingLoop();
         startAcikIsEmriPollingLoop();
+        startKapaliIsEmriPollingLoop();
     });
 })();
 
@@ -1904,12 +1907,112 @@ function parseTurkishDateTime(str) {
     return new Date(year, month, day, hours, minutes, seconds).getTime();
 }
 
+function populateSelectOptions(table) {
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr');
+    if (rows.length === 0) return;
+
+    const istasyonSelects = [document.getElementById('filter-istasyon'), document.getElementById('kapali-filter-istasyon')].filter(Boolean);
+    const kategoriSelects = [document.getElementById('filter-kategori'), document.getElementById('kapali-filter-kategori')].filter(Boolean);
+
+    if (istasyonSelects.length === 0 && kategoriSelects.length === 0) return;
+
+    const stations = new Set();
+    const categories = new Set();
+
+    rows.forEach(tr => {
+        const cells = tr.querySelectorAll('td, th');
+        if (cells.length === 0) return;
+
+        // İstasyon: 3. column (td:nth-child(3) -> cell index 2)
+        const cellIst = cells[2];
+        if (cellIst) {
+            const s = cellIst.textContent.replace(/\s+/g, ' ').trim();
+            if (s) stations.add(s);
+        }
+
+        // Kategori: 4. column (td:nth-child(4) -> cell index 3)
+        const cellKat = cells[3];
+        if (cellKat) {
+            const c = cellKat.textContent.replace(/\s+/g, ' ').trim();
+            if (c) categories.add(c);
+        }
+    });
+
+    const sortedStations = Array.from(stations).sort((a, b) => a.localeCompare(b, 'tr'));
+    const sortedCategories = Array.from(categories).sort((a, b) => a.localeCompare(b, 'tr'));
+
+    istasyonSelects.forEach(select => {
+        const existingValues = new Set(Array.from(select.options).map(opt => opt.value));
+        sortedStations.forEach(s => {
+            if (!existingValues.has(s)) {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                select.appendChild(opt);
+            }
+        });
+    });
+
+    kategoriSelects.forEach(select => {
+        const existingValues = new Set(Array.from(select.options).map(opt => opt.value));
+        sortedCategories.forEach(c => {
+            if (!existingValues.has(c)) {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            }
+        });
+    });
+}
+
 function initAcikIsEmriFilter() {
     try {
-        if (document.getElementById('is-emri-filter-toolbar')) {
-            if (window.acikIsEmriIntervalId) {
-                clearInterval(window.acikIsEmriIntervalId);
-                window.acikIsEmriIntervalId = null;
+        const existingToolbar = document.getElementById('is-emri-filter-toolbar');
+        if (existingToolbar) {
+            const urlLower = window.location.href.toLowerCase();
+            let queryParams;
+            try {
+                queryParams = new URLSearchParams(window.location.search);
+            } catch (e) {
+                queryParams = new URLSearchParams();
+            }
+
+            let hasTargetHeading = false;
+            let targetHeadingElement = null;
+            const headers = document.querySelectorAll('h2, h3, .panel-title, .x_title h2');
+            for (const h of headers) {
+                const text = turkishToLower(h.textContent || "");
+                if (text.includes("açık iş emri") || text.includes("acik is emri")) {
+                    hasTargetHeading = true;
+                    targetHeadingElement = h;
+                    break;
+                }
+            }
+
+            const isTargetPage = queryParams.get('page') === '11' || urlLower.includes('page=11') || hasTargetHeading;
+            if (isTargetPage) {
+                let xPanel = targetHeadingElement ? targetHeadingElement.closest('.x_panel') : document.querySelector('.x_panel');
+                if (xPanel) {
+                    const xContent = xPanel.querySelector('.x_content');
+                    if (xContent) {
+                        const table = xContent.querySelector('table');
+                        const istasyonSelect = existingToolbar.querySelector('#filter-istasyon');
+                        if (table && istasyonSelect) {
+                            const trs = table.querySelectorAll('tbody tr');
+                            if (istasyonSelect.options.length === 1 && trs.length > 0) {
+                                populateSelectOptions(table);
+                            }
+                            if (istasyonSelect.options.length > 1) {
+                                if (window.acikIsEmriIntervalId) {
+                                    clearInterval(window.acikIsEmriIntervalId);
+                                    window.acikIsEmriIntervalId = null;
+                                }
+                            }
+                        }
+                    }
+                }
             }
             return;
         }
@@ -1960,7 +2063,6 @@ function initAcikIsEmriFilter() {
 
         // 1. Map columns dynamically
         const allRows = Array.from(table.querySelectorAll('tbody tr'));
-        if (allRows.length === 0) return;
 
         let idColIdx = 0;
         let dateColIdx = 1;
@@ -2002,41 +2104,12 @@ function initAcikIsEmriFilter() {
             rowsToSort.forEach(r => tbody.appendChild(r));
         }
 
-        // 3. Extract unique station names and category list from rows
-        const stations = new Set();
-        const categories = new Set();
-        const dataRows = table.querySelectorAll('tbody tr');
-
-        dataRows.forEach(tr => {
-            const cells = tr.querySelectorAll('td, th');
-            if (cells.length === 0) return;
-
-            if (cells[istasyonColIdx]) {
-                const s = cells[istasyonColIdx].textContent.trim();
-                if (s) stations.add(s);
-            }
-            if (cells[kategoriColIdx]) {
-                const c = cells[kategoriColIdx].textContent.trim();
-                if (c) categories.add(c);
-            }
-        });
-
-        const sortedStations = Array.from(stations).sort((a, b) => a.localeCompare(b, 'tr'));
-        const sortedCategories = Array.from(categories).sort((a, b) => a.localeCompare(b, 'tr'));
-
         // 4. Create the filter toolbar
         const toolbar = document.createElement('div');
         toolbar.id = 'is-emri-filter-toolbar';
 
         let istasyonOptions = `<option value="">Tüm İstasyonlar</option>`;
-        sortedStations.forEach(s => {
-            istasyonOptions += `<option value="${s}">${s}</option>`;
-        });
-
         let kategoriOptions = `<option value="">Tüm Kategoriler</option>`;
-        sortedCategories.forEach(c => {
-            kategoriOptions += `<option value="${c}">${c}</option>`;
-        });
 
         toolbar.innerHTML = `
             <div class="filter-item">
@@ -2067,6 +2140,7 @@ function initAcikIsEmriFilter() {
         `;
 
         xContent.prepend(toolbar);
+        populateSelectOptions(table);
 
         // 5. Connect inputs to applyFilters
         const dateStartInput = toolbar.querySelector('#filter-date-start');
@@ -2083,7 +2157,8 @@ function initAcikIsEmriFilter() {
             const kategoriVal = kategoriSelect.value.trim();
             const idFormVal = turkishToLower(idFormInput.value.trim());
 
-            dataRows.forEach(tr => {
+            const currentDataRows = table.querySelectorAll('tbody tr');
+            currentDataRows.forEach(tr => {
                 const cells = tr.querySelectorAll('td, th');
                 if (cells.length === 0) return;
 
@@ -2178,12 +2253,321 @@ function initAcikIsEmriFilter() {
             applyFilters();
         });
 
-        if (window.acikIsEmriIntervalId) {
-            clearInterval(window.acikIsEmriIntervalId);
-            window.acikIsEmriIntervalId = null;
+        const optCount = istasyonSelect.options.length;
+        if (optCount > 1) {
+            if (window.acikIsEmriIntervalId) {
+                clearInterval(window.acikIsEmriIntervalId);
+                window.acikIsEmriIntervalId = null;
+            }
         }
     } catch (err) {
         console.error("Error in initAcikIsEmriFilter:", err);
+    }
+}
+
+function startKapaliIsEmriPollingLoop() {
+    if (window.kapaliIsEmriIntervalId) {
+        clearInterval(window.kapaliIsEmriIntervalId);
+    }
+    window.kapaliIsEmriIntervalId = setInterval(initKapaliIsEmriFilter, 400);
+}
+
+function initKapaliIsEmriFilter() {
+    try {
+        const existingToolbar = document.getElementById('kapali-is-emri-filter-toolbar');
+        if (existingToolbar) {
+            // Target check: page=12 or heading text containing "Kapalı İş Emri Listesi"
+            const urlLower = window.location.href.toLowerCase();
+            let queryParams;
+            try {
+                queryParams = new URLSearchParams(window.location.search);
+            } catch (e) {
+                queryParams = new URLSearchParams();
+            }
+
+            let hasTargetHeading = false;
+            let targetHeadingElement = null;
+            const headers = document.querySelectorAll('h2, h3, .panel-title, .x_title h2');
+            for (const h of headers) {
+                const text = turkishToLower(h.textContent || "");
+                if (text.includes("kapalı iş emri") || text.includes("kapali is emri")) {
+                    hasTargetHeading = true;
+                    targetHeadingElement = h;
+                    break;
+                }
+            }
+
+            const isTargetPage = queryParams.get('page') === '12' || urlLower.includes('page=12') || hasTargetHeading;
+            if (isTargetPage) {
+                let xPanel = targetHeadingElement ? targetHeadingElement.closest('.x_panel') : document.querySelector('.x_panel');
+                if (xPanel) {
+                    const xContent = xPanel.querySelector('.x_content');
+                    if (xContent) {
+                        const table = xContent.querySelector('table');
+                        const istasyonSelect = existingToolbar.querySelector('#kapali-filter-istasyon');
+                        if (table && istasyonSelect) {
+                            const trs = table.querySelectorAll('tbody tr');
+                            if (istasyonSelect.options.length === 1 && trs.length > 0) {
+                                populateSelectOptions(table);
+                            }
+                            if (istasyonSelect.options.length > 1) {
+                                if (window.kapaliIsEmriIntervalId) {
+                                    clearInterval(window.kapaliIsEmriIntervalId);
+                                    window.kapaliIsEmriIntervalId = null;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
+        // Target check: page=12 or heading text containing "Kapalı İş Emri Listesi"
+        const urlLower = window.location.href.toLowerCase();
+        let queryParams;
+        try {
+            queryParams = new URLSearchParams(window.location.search);
+        } catch (e) {
+            queryParams = new URLSearchParams();
+        }
+
+        let hasTargetHeading = false;
+        let targetHeadingElement = null;
+        const headers = document.querySelectorAll('h2, h3, .panel-title, .x_title h2');
+        for (const h of headers) {
+            const text = turkishToLower(h.textContent || "");
+            if (text.includes("kapalı iş emri") || text.includes("kapali is emri")) {
+                hasTargetHeading = true;
+                targetHeadingElement = h;
+                break;
+            }
+        }
+
+        const isTargetPage = queryParams.get('page') === '12' || urlLower.includes('page=12') || hasTargetHeading;
+        if (!isTargetPage) return;
+
+        // Find the table and container .x_panel
+        let table = null;
+        let xPanel = null;
+        if (targetHeadingElement) {
+            xPanel = targetHeadingElement.closest('.x_panel');
+        }
+        if (!xPanel) {
+            xPanel = document.querySelector('.x_panel');
+        }
+        if (!xPanel) return;
+
+        const xContent = xPanel.querySelector('.x_content');
+        if (!xContent) return;
+
+        table = xContent.querySelector('table');
+        if (!table) return;
+
+        // Double check toolbar doesn't exist
+        if (document.getElementById('kapali-is-emri-filter-toolbar')) return;
+
+        // 1. Map columns dynamically
+        const allRows = Array.from(table.querySelectorAll('tbody tr'));
+
+        let idColIdx = 0;
+        let dateColIdx = 1;
+        let istasyonColIdx = 2;
+        let kategoriColIdx = 3;
+
+        const headerCells = table.querySelectorAll('thead th, thead td, tbody tr:first-child th, tbody tr:first-child td');
+        headerCells.forEach((cell, idx) => {
+            const text = turkishToLower(cell.textContent || "").trim();
+            if (text.includes("tarih") || text.includes("açılma") || text.includes("acilis") || text.includes("acma")) {
+                dateColIdx = idx;
+            } else if (text.includes("istasyon") || text.includes("yer")) {
+                istasyonColIdx = idx;
+            } else if (text.includes("kategori") || text.includes("konu") || text.includes("grup")) {
+                kategoriColIdx = idx;
+            } else if (text.includes("id") || text.includes("form") || text.includes("no")) {
+                idColIdx = idx;
+            }
+        });
+
+        // 2. Auto Sort by Opening Date (Descending)
+        const tbody = table.querySelector('tbody');
+        if (tbody) {
+            const rowsToSort = allRows.filter(r => r.querySelectorAll('td, th').length > 0);
+            rowsToSort.sort((rowA, rowB) => {
+                const cellsA = rowA.querySelectorAll('td, th');
+                const cellsB = rowB.querySelectorAll('td, th');
+
+                const valA = cellsA[dateColIdx] ? cellsA[dateColIdx].textContent.trim() : '';
+                const valB = cellsB[dateColIdx] ? cellsB[dateColIdx].textContent.trim() : '';
+
+                const timeA = parseTurkishDateTime(valA);
+                const timeB = parseTurkishDateTime(valB);
+
+                return timeB - timeA; // Descending (newest first)
+            });
+
+            // Re-append sorted rows
+            rowsToSort.forEach(r => tbody.appendChild(r));
+        }
+
+        // 4. Create the filter toolbar
+        const toolbar = document.createElement('div');
+        toolbar.id = 'kapali-is-emri-filter-toolbar';
+
+        let istasyonOptions = `<option value="">Tüm İstasyonlar</option>`;
+        let kategoriOptions = `<option value="">Tüm Kategoriler</option>`;
+
+        toolbar.innerHTML = `
+            <div class="filter-item">
+                <span class="filter-label">BAŞLANGIÇ TARİHİ</span>
+                <input type="date" id="kapali-filter-date-start">
+            </div>
+            <div class="filter-item">
+                <span class="filter-label">BİTİŞ TARİHİ</span>
+                <input type="date" id="kapali-filter-date-end">
+            </div>
+            <div class="filter-item">
+                <span class="filter-label">İSTASYON SEÇ</span>
+                <select id="kapali-filter-istasyon">
+                    ${istasyonOptions}
+                </select>
+            </div>
+            <div class="filter-item">
+                <span class="filter-label">KATEGORİ SEÇ</span>
+                <select id="kapali-filter-kategori">
+                    ${kategoriOptions}
+                </select>
+            </div>
+            <div class="filter-item filter-search-grow">
+                <span class="filter-label">ID / FORM NO ARA</span>
+                <input type="text" id="kapali-filter-id-form" placeholder="ID / Form No Ara...">
+            </div>
+            <button id="kapali-filter-clear-all">Temizle</button>
+        `;
+
+        xContent.prepend(toolbar);
+        populateSelectOptions(table);
+
+        // 5. Connect inputs to applyFilters
+        const dateStartInput = toolbar.querySelector('#kapali-filter-date-start');
+        const dateEndInput = toolbar.querySelector('#kapali-filter-date-end');
+        const istasyonSelect = toolbar.querySelector('#kapali-filter-istasyon');
+        const kategoriSelect = toolbar.querySelector('#kapali-filter-kategori');
+        const idFormInput = toolbar.querySelector('#kapali-filter-id-form');
+        const clearAllBtn = toolbar.querySelector('#kapali-filter-clear-all');
+
+        const applyFilters = () => {
+            const startVal = dateStartInput.value;
+            const endVal = dateEndInput.value;
+            const istasyonVal = istasyonSelect.value.trim();
+            const kategoriVal = kategoriSelect.value.trim();
+            const idFormVal = turkishToLower(idFormInput.value.trim());
+
+            const currentDataRows = table.querySelectorAll('tbody tr');
+            currentDataRows.forEach(tr => {
+                const cells = tr.querySelectorAll('td, th');
+                if (cells.length === 0) return;
+
+                let isMatched = true;
+
+                // Date range evaluation
+                if (cells[dateColIdx]) {
+                    const dateText = cells[dateColIdx].textContent.trim();
+                    const rowTime = parseTurkishDateTime(dateText);
+
+                    if (startVal && !endVal) {
+                        // Durum A: Sadece Başlangıç Tarihi Girilirse (Tarih kısmı tam eşitlik)
+                        if (rowTime > 0) {
+                            const startDateObj = new Date(startVal + 'T00:00:00');
+                            const rowDateObj = new Date(rowTime);
+
+                            const startYear = startDateObj.getFullYear();
+                            const startMonth = startDateObj.getMonth();
+                            const startDay = startDateObj.getDate();
+
+                            const rowYear = rowDateObj.getFullYear();
+                            const rowMonth = rowDateObj.getMonth();
+                            const rowDay = rowDateObj.getDate();
+
+                            if (startYear !== rowYear || startMonth !== rowMonth || startDay !== rowDay) {
+                                isMatched = false;
+                            }
+                        } else {
+                            isMatched = false;
+                        }
+                    } else if (startVal && endVal) {
+                        // Durum B: Hem Başlangıç Hem Bitiş Tarihi Girilirse
+                        if (rowTime > 0) {
+                            const startTime = new Date(startVal + 'T00:00:00').getTime();
+                            const endTime = new Date(endVal + 'T23:59:59').getTime();
+                            if (rowTime < startTime || rowTime > endTime) {
+                                isMatched = false;
+                            }
+                        } else {
+                            isMatched = false;
+                        }
+                    } else if (!startVal && endVal) {
+                        // Sadece Bitiş tarihi varsa: bitiş tarihine kadar olanlar
+                        if (rowTime > 0) {
+                            const endTime = new Date(endVal + 'T23:59:59').getTime();
+                            if (rowTime > endTime) {
+                                isMatched = false;
+                            }
+                        } else {
+                            isMatched = false;
+                        }
+                    }
+                    // Durum C: İki Tarih de Boşsa: Tarih filtresini pas geç
+                }
+
+                // Station match
+                if (istasyonVal && cells[istasyonColIdx]) {
+                    const stationText = cells[istasyonColIdx].textContent.trim();
+                    if (stationText !== istasyonVal) isMatched = false;
+                }
+
+                // Category match
+                if (kategoriVal && cells[kategoriColIdx]) {
+                    const categoryText = cells[kategoriColIdx].textContent.trim();
+                    if (categoryText !== kategoriVal) isMatched = false;
+                }
+
+                // ID / Form No search
+                if (idFormVal) {
+                    let matchText = '';
+                    if (cells[idColIdx]) matchText += ' ' + cells[idColIdx].textContent.trim();
+                    matchText = turkishToLower(matchText);
+                    if (!matchText.includes(idFormVal)) isMatched = false;
+                }
+
+                tr.style.display = isMatched ? '' : 'none';
+            });
+        };
+
+        dateStartInput.addEventListener('change', applyFilters);
+        dateEndInput.addEventListener('change', applyFilters);
+        istasyonSelect.addEventListener('change', applyFilters);
+        kategoriSelect.addEventListener('change', applyFilters);
+        idFormInput.addEventListener('input', applyFilters);
+
+        clearAllBtn.addEventListener('click', () => {
+            dateStartInput.value = '';
+            dateEndInput.value = '';
+            istasyonSelect.value = '';
+            kategoriSelect.value = '';
+            idFormInput.value = '';
+            applyFilters();
+        });
+
+        const optCount = istasyonSelect.options.length;
+        if (optCount > 1) {
+            if (window.kapaliIsEmriIntervalId) {
+                clearInterval(window.kapaliIsEmriIntervalId);
+                window.kapaliIsEmriIntervalId = null;
+            }
+        }
+    } catch (err) {
+        console.error("Error in initKapaliIsEmriFilter:", err);
     }
 }
 
@@ -2191,17 +2575,20 @@ function initAcikIsEmriFilter() {
 initializeDarkMode();
 startYolcuPollingLoop();
 startAcikIsEmriPollingLoop();
+startKapaliIsEmriPollingLoop();
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     handleNavigation();
     startObserver();
     initYolcuSayilariFilter();
     initAcikIsEmriFilter();
+    initKapaliIsEmriFilter();
 } else {
     document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
         startObserver();
         initYolcuSayilariFilter();
         initAcikIsEmriFilter();
+        initKapaliIsEmriFilter();
     });
 }
