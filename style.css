@@ -1795,3 +1795,148 @@ body:not(.dark-theme) .btn-success {
     border-color: #047857 !important;
     border-bottom-color: #064e3b !important;
 }
+
+/* ====================================================
+   3D EXPANDABLE KPI CARDS STYLING
+   ==================================================== */
+.tile_stats_count {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: auto !important;
+    overflow: hidden !important;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease !important;
+}
+
+.izban-tile-main-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    cursor: pointer !important;
+}
+
+.izban-tile-pie-container {
+    cursor: pointer !important;
+    transition: transform 0.2s ease !important;
+}
+
+.izban-tile-pie-container:hover {
+    transform: scale(1.1) !important;
+}
+
+.izban-tile-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out !important;
+    position: relative !important;
+}
+
+.izban-tile-details.open {
+    max-height: 250px !important;
+}
+
+.izban-tile-details-inner {
+    padding: 15px 12px 12px 12px !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.izban-tile-details-close {
+    position: absolute !important;
+    top: 8px !important;
+    right: 12px !important;
+    width: 22px !important;
+    height: 22px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    border: none !important;
+    font-size: 14px !important;
+    color: #94a3b8 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    z-index: 10 !important;
+}
+
+.izban-tile-details-close:hover {
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.izban-detail-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+}
+
+.izban-detail-row span:last-child {
+    padding-right: 28px !important;
+}
+
+/* Light / Dark Mode Adaptation */
+body:not(.dark-theme) .izban-tile-details {
+    background-color: #f6efe2 !important;
+    border-top: 1px solid #e3d2bd !important;
+}
+
+body:not(.dark-theme) .izban-detail-row {
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .izban-tile-details {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme .izban-detail-row {
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme .izban-tile-details-close {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ====================================================
+   3D EXPANDABLE KPI CARDS - COMPLAINTS CARD
+   ==================================================== */
+.izban-complaint-tile {
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.izban-complaint-tile:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 20px -5px rgba(184, 160, 130, 0.25),
+        inset 0 2px 0 0 #ffffff,
+        0 4px 0 0 #d9c4aa !important;
+}
+
+body.dark-theme .izban-complaint-tile:hover {
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+        0 3px 0 0 #0f172a !important;
+}
+
+.izban-complaint-arrow {
+    font-size: 18px !important;
+    font-weight: bold !important;
+    color: #ef4444 !important;
+    transition: transform 0.2s ease, color 0.2s ease !important;
+    margin-left: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+.izban-complaint-tile:hover .izban-complaint-arrow {
+    transform: translate(2px, -2px) !important;
+    color: #dc2626 !important;
+}
