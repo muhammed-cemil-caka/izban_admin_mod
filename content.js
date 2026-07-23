@@ -2274,6 +2274,7 @@ function initAcikIsEmriFilter() {
             }
             return;
         }
+        const existingToolbar = document.getElementById('is-emri-filter-toolbar');
         if (existingToolbar) {
             const urlLower = window.location.href.toLowerCase();
             let queryParams;
