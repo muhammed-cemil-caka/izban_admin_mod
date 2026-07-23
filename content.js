@@ -465,12 +465,16 @@ function toggleDarkMode() {
 }
 
 function handleNavigation() {
-    // Giriş sayfasını denetle
-    detectLoginPage();
-    // Dinamik grafik ekleme ve sayfa yerleşimlerini güncelleme fonksiyonunu çalıştır
-    handlePageLayout();
-    // Şikayet sayfası görsel iyileştirmelerini başlat
-    initializeSikayetlerPage();
+    try {
+        // Giriş sayfasını denetle
+        detectLoginPage();
+        // Dinamik grafik ekleme ve sayfa yerleşimlerini güncelleme fonksiyonunu çalıştır
+        handlePageLayout();
+        // Şikayet sayfası görsel iyileştirmelerini başlat
+        initializeSikayetlerPage();
+    } catch (e) {
+        console.warn('Error in handleNavigation:', e);
+    }
 }
 
 function handlePageLayout() {
@@ -1409,7 +1413,13 @@ function showModernComplaintsModal() {
 
 function initializeSikayetlerPage() {
     const urlLower = window.location.href.toLowerCase();
-    const queryParams = new URL(window.location.search);
+    let queryParams;
+    try {
+        queryParams = new URLSearchParams(window.location.search);
+    } catch (e) {
+        console.warn('URL Parse Error Ignored:', e);
+        queryParams = new URLSearchParams();
+    }
     const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler';
 
     if (!isSikayetPage) return;
@@ -1630,14 +1640,220 @@ function initializeSikayetlerPage() {
     });
 }
 
+// Override history methods to dispatch navigation events for AJAX transfers
+(function () {
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function () {
+        const result = originalPushState.apply(this, arguments);
+        startYolcuPollingLoop();
+        return result;
+    };
+
+    history.replaceState = function () {
+        const result = originalReplaceState.apply(this, arguments);
+        startYolcuPollingLoop();
+        return result;
+    };
+
+    window.addEventListener('popstate', () => {
+        startYolcuPollingLoop();
+    });
+})();
+
+function startYolcuPollingLoop() {
+    if (window.yolcuIntervalId) {
+        clearInterval(window.yolcuIntervalId);
+    }
+    window.yolcuIntervalId = setInterval(initYolcuSayilariFilter, 500);
+}
+
+function initYolcuSayilariFilter() {
+    try {
+        if (document.getElementById('yolcu-filter-toolbar')) {
+            if (window.yolcuIntervalId) {
+                clearInterval(window.yolcuIntervalId);
+                window.yolcuIntervalId = null;
+            }
+            return;
+        }
+
+        // Find the <h2> with the matching text
+        let targetHeader = null;
+        const headers = document.querySelectorAll('h2');
+        for (const h2 of headers) {
+            const h2Text = turkishToLower(h2.textContent || "");
+            if (h2Text.includes("yolcu sayısı tablosu") || (h2Text.includes("yıllık") && h2Text.includes("aylık") && h2Text.includes("yolcu"))) {
+                targetHeader = h2;
+                break;
+            }
+        }
+
+        if (!targetHeader) return;
+
+        // Find parent .x_panel container
+        const xPanel = targetHeader.closest('.x_panel');
+        if (!xPanel) return;
+
+        const xContent = xPanel.querySelector('.x_content');
+        if (!xContent) return;
+
+        const table = xContent.querySelector('table');
+        if (!table) return;
+
+        // Double check toolbar already exists
+        if (document.getElementById('yolcu-filter-toolbar')) return;
+
+        const rows = table.querySelectorAll('tbody tr');
+        const years = new Set();
+        rows.forEach(tr => {
+            const cells = tr.querySelectorAll('td, th');
+            if (cells.length > 0) {
+                const yearText = cells[0].textContent.trim();
+                // Match 4-digit number: 2010, 2011 etc.
+                if (/^\d{4}$/.test(yearText)) {
+                    years.add(yearText);
+                }
+            }
+        });
+
+        const sortedYears = Array.from(years).sort((a, b) => b - a);
+
+        // Create the Multi-Filter Toolbar
+        const toolbar = document.createElement('div');
+        toolbar.id = 'yolcu-filter-toolbar';
+
+        let yearOptions = "";
+        sortedYears.forEach(year => {
+            yearOptions += `<option value="${year}">${year}</option>`;
+        });
+
+        toolbar.innerHTML = `
+            <select id="yolcu-year-select" multiple size="4" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: auto; min-width: 140px;">
+                ${yearOptions}
+            </select>
+            <select id="yolcu-month-select" multiple size="4" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #fff; height: auto; min-width: 140px;">
+                <option value="ocak">Ocak</option>
+                <option value="şubat">Şubat</option>
+                <option value="mart">Mart</option>
+                <option value="nisan">Nisan</option>
+                <option value="mayıs">Mayıs</option>
+                <option value="haziran">Haziran</option>
+                <option value="temmuz">Temmuz</option>
+                <option value="ağustos">Ağustos</option>
+                <option value="eylül">Eylül</option>
+                <option value="ekim">Ekim</option>
+                <option value="kasım">Kasım</option>
+                <option value="aralık">Aralık</option>
+            </select>
+            <button id="yolcu-clear-filter" style="padding: 6px 12px; border-radius: 6px; background: #ef4444; color: #fff; border: none; cursor: pointer; height: 38px;">Temizle</button>
+        `;
+
+        // Prepend toolbar to x_content
+        xContent.prepend(toolbar);
+
+        const yearSelect = toolbar.querySelector('#yolcu-year-select');
+        const monthSelect = toolbar.querySelector('#yolcu-month-select');
+        const clearBtn = toolbar.querySelector('#yolcu-clear-filter');
+
+        const applyFilters = () => {
+            const selectedYears = Array.from(yearSelect.selectedOptions).map(o => o.value).filter(val => val !== "");
+            const selectedMonths = Array.from(monthSelect.selectedOptions).map(o => o.value).filter(val => val !== "");
+
+            // 1. Filter rows (Logical AND)
+            rows.forEach(tr => {
+                const cells = tr.querySelectorAll('td, th');
+                if (cells.length === 0) return;
+
+                const yearText = cells[0].textContent.trim();
+                const isYearMatched = (selectedYears.length === 0) || selectedYears.includes(yearText);
+
+                if (isYearMatched) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+
+            // 2. Hide/Show month columns dynamically
+            const allRows = table.querySelectorAll('tr');
+            if (allRows.length > 0) {
+                const headerCells = allRows[0].querySelectorAll('th, td');
+                const monthColIndices = {};
+                const turkishMonths = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"];
+
+                // Map header index to month names
+                headerCells.forEach((cell, idx) => {
+                    const text = turkishToLower(cell.textContent || "").trim();
+                    turkishMonths.forEach(m => {
+                        if (text === m || (text.startsWith(m) && text.length <= m.length + 3)) {
+                            monthColIndices[m] = idx;
+                        }
+                    });
+                });
+
+                // Apply visibility on all tr's cells
+                allRows.forEach(tr => {
+                    const cells = tr.querySelectorAll('td, th');
+                    cells.forEach((cell, idx) => {
+                        cell.style.display = '';
+
+                        if (selectedMonths.length > 0) {
+                            let isMonthColumn = false;
+                            let isTargetMonth = false;
+
+                            for (const [mName, mIdx] of Object.entries(monthColIndices)) {
+                                if (mIdx === idx) {
+                                    isMonthColumn = true;
+                                    if (selectedMonths.includes(mName)) {
+                                        isTargetMonth = true;
+                                    }
+                                    break;
+                                }
+                            }
+
+                            if (isMonthColumn && !isTargetMonth) {
+                                cell.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+        };
+
+        yearSelect.addEventListener('change', applyFilters);
+        monthSelect.addEventListener('change', applyFilters);
+
+        clearBtn.addEventListener('click', () => {
+            Array.from(yearSelect.options).forEach(opt => opt.selected = false);
+            Array.from(monthSelect.options).forEach(opt => opt.selected = false);
+            applyFilters();
+        });
+
+        // Clear interval upon successful injection
+        if (window.yolcuIntervalId) {
+            clearInterval(window.yolcuIntervalId);
+            window.yolcuIntervalId = null;
+        }
+
+    } catch (err) {
+        console.error('Error in initYolcuSayilariFilter:', err);
+    }
+}
+
 // Sayfa yüklendiğinde başlat
 initializeDarkMode();
+startYolcuPollingLoop();
+
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     handleNavigation();
     startObserver();
+    initYolcuSayilariFilter();
 } else {
     document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
         startObserver();
+        initYolcuSayilariFilter();
     });
 }

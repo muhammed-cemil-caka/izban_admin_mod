@@ -2329,3 +2329,98 @@ body.dark-theme .izban-modal-list-item {
     line-height: 1.45 !important;
     opacity: 0.8 !important;
 }
+
+/* ====================================================
+   YOLCU SAYILARI MULTI-FILTER TOOLBAR (PHASE 21)
+   ==================================================== */
+#yolcu-filter-toolbar {
+    margin-bottom: 15px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    align-items: center !important;
+    background: rgba(30, 41, 59, 0.95) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.2s ease !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select,
+#yolcu-filter-toolbar select#yolcu-month-select {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    padding: 6px !important;
+    min-width: 140px !important;
+    outline: none !important;
+    box-shadow: none !important;
+    height: 96px !important;
+    /* height adjusted to display 4 items */
+    transition: all 0.15s ease !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select:focus,
+#yolcu-filter-toolbar select#yolcu-month-select:focus {
+    border-color: #3b82f6 !important;
+    background: #243249 !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select option,
+#yolcu-filter-toolbar select#yolcu-month-select option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    padding: 4px 8px !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select option:checked,
+#yolcu-filter-toolbar select#yolcu-month-select option:checked {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+/* Custom scrollbars inside the list box */
+#yolcu-filter-toolbar select#yolcu-year-select::-webkit-scrollbar,
+#yolcu-filter-toolbar select#yolcu-month-select::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select::-webkit-scrollbar-track,
+#yolcu-filter-toolbar select#yolcu-month-select::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select::-webkit-scrollbar-thumb,
+#yolcu-filter-toolbar select#yolcu-month-select::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 3px !important;
+}
+
+#yolcu-filter-toolbar select#yolcu-year-select::-webkit-scrollbar-thumb:hover,
+#yolcu-filter-toolbar select#yolcu-month-select::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Clear Button styling */
+#yolcu-filter-toolbar button#yolcu-clear-filter {
+    height: 38px !important;
+    padding: 0 16px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    transition: all 0.15s ease !important;
+}
+
+#yolcu-filter-toolbar button#yolcu-clear-filter:hover {
+    background: #dc2626 !important;
+}
