@@ -135,6 +135,7 @@ span:not(.fa):not(.glyphicon):not([class*="fa-"]):not([class*="glyphicon-"]) {
 .tile_count {
     display: flex !important;
     flex-wrap: wrap !important;
+    align-items: start !important;
     gap: 16px !important;
     margin-bottom: 28px !important;
     border: none !important;
@@ -1804,7 +1805,8 @@ body:not(.dark-theme) .btn-success {
     flex-direction: column !important;
     align-items: stretch !important;
     height: auto !important;
-    overflow: hidden !important;
+    position: relative !important;
+    overflow: visible !important;
     transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease !important;
 }
 
@@ -1827,14 +1829,27 @@ body:not(.dark-theme) .btn-success {
 }
 
 .izban-tile-details {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out !important;
-    position: relative !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(-8px) !important;
+    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s !important;
+    border-radius: 0 0 12px 12px !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid #cbd5e1 !important;
+    border-top: none !important;
+    max-height: none !important;
+    overflow: visible !important;
 }
 
 .izban-tile-details.open {
-    max-height: 250px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
 }
 
 .izban-tile-details-inner {
@@ -1885,8 +1900,12 @@ body:not(.dark-theme) .btn-success {
 
 /* Light / Dark Mode Adaptation */
 body:not(.dark-theme) .izban-tile-details {
-    background-color: #f6efe2 !important;
-    border-top: 1px solid #e3d2bd !important;
+    background-color: #faf7f2 !important;
+    border-left: 1px solid #e3d2bd !important;
+    border-right: 1px solid #e3d2bd !important;
+    border-bottom: 1px solid #e3d2bd !important;
+    border-top: none !important;
+    box-shadow: 0 16px 32px rgba(184, 160, 130, 0.18) !important;
 }
 
 body:not(.dark-theme) .izban-detail-row {
@@ -1894,8 +1913,12 @@ body:not(.dark-theme) .izban-detail-row {
 }
 
 body.dark-theme .izban-tile-details {
-    background-color: rgba(255, 255, 255, 0.03) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background-color: #1e293b !important;
+    border-left: 1px solid #334155 !important;
+    border-right: 1px solid #334155 !important;
+    border-bottom: 1px solid #334155 !important;
+    border-top: none !important;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6) !important;
 }
 
 body.dark-theme .izban-detail-row {
@@ -1904,6 +1927,29 @@ body.dark-theme .izban-detail-row {
 
 body.dark-theme .izban-tile-details-close {
     background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dynamic expanded z-index stacking context overrides */
+.tile_stats_count.is-expanded {
+    z-index: 1000 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-width: 1px !important;
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+body:not(.dark-theme) .tile_stats_count.is-expanded {
+    border-bottom-color: #e3d2bd !important;
+    box-shadow: 0 4px 6px -1px rgba(184, 160, 130, 0.1),
+        inset 0 1px 0 0 #ffffff !important;
+}
+
+body.dark-theme .tile_stats_count.is-expanded {
+    border-bottom-color: #334155 !important;
+    box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ====================================================
@@ -1939,4 +1985,117 @@ body.dark-theme .izban-complaint-tile:hover {
 .izban-complaint-tile:hover .izban-complaint-arrow {
     transform: translate(2px, -2px) !important;
     color: #dc2626 !important;
+}
+
+/* ====================================================
+   3D MODERN COMPLAINTS TABLE STYLING
+   ==================================================== */
+.izban-sikayet-panel {
+    margin-top: 16px !important;
+}
+
+.izban-modern-table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 8px !important;
+    margin-top: 12px !important;
+    background: transparent !important;
+}
+
+.izban-modern-table th {
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+    letter-spacing: 0.5px !important;
+    color: #64748b !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    padding: 12px !important;
+}
+
+body:not(.dark-theme) .izban-modern-table th {
+    color: #5c4a37 !important;
+    border-bottom-color: #cbd5e1 !important;
+}
+
+.izban-modern-table tbody tr {
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* 3D look for table rows in light mode */
+body:not(.dark-theme) .izban-modern-table tbody tr:not(.izban-reply-accordion-row) {
+    background-color: #faf7f2 !important;
+    box-shadow: 0 4px 6px rgba(184, 160, 130, 0.1),
+        inset 0 1px 0 0 #ffffff,
+        0 2px 0 0 #d9c4aa !important;
+}
+
+/* 3D look for table rows in dark mode */
+body.dark-theme .izban-modern-table tbody tr:not(.izban-reply-accordion-row) {
+    background-color: #1e293b !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+        0 2px 0 0 #0f172a !important;
+}
+
+.izban-modern-table td {
+    padding: 14px 12px !important;
+    vertical-align: middle !important;
+    border: none !important;
+    font-size: 12.5px !important;
+}
+
+body:not(.dark-theme) .izban-modern-table td {
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .izban-modern-table td {
+    color: #cbd5e1 !important;
+}
+
+/* Durum badges */
+.izban-status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+}
+
+.izban-status-badge.answered {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+
+.izban-status-badge.pending {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Reply accordion wrapper */
+.izban-reply-box-inner {
+    padding: 16px !important;
+    border-radius: 8px !important;
+    animation: slideDown 0.25s ease-out !important;
+}
+
+body:not(.dark-theme) .izban-reply-box-inner {
+    background-color: #faf7f2 !important;
+    border: 1px dashed #e3d2bd !important;
+    box-shadow: inset 0 2px 5px rgba(184, 160, 130, 0.15) !important;
+    color: #5c4a37 !important;
+}
+
+body.dark-theme .izban-reply-box-inner {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+    color: #cbd5e1 !important;
+}
+
+.izban-reply-accordion-row {
+    background-color: transparent !important;
 }

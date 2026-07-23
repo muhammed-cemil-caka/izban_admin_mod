@@ -469,6 +469,8 @@ function handleNavigation() {
     detectLoginPage();
     // Dinamik grafik ekleme ve sayfa yerleşimlerini güncelleme fonksiyonunu çalıştır
     handlePageLayout();
+    // Şikayet sayfası görsel iyileştirmelerini başlat
+    initializeSikayetlerPage();
 }
 
 function handlePageLayout() {
@@ -672,7 +674,8 @@ function handlePageLayout() {
             const links = Array.from(document.querySelectorAll('.nav.side-menu a, .child_menu a'));
             const found = links.find(a => {
                 const text = a.textContent.toLowerCase();
-                return text.includes('şikayet') || text.includes('şikâyet');
+                const href = (a.getAttribute('href') || '').toLowerCase();
+                return text.includes('şikayet') || text.includes('şikâyet') || href.includes('sikayet') || href.includes('complaint');
             });
             return found ? found.getAttribute('href') : '?page=sikayetler';
         };
@@ -698,6 +701,10 @@ function handlePageLayout() {
                 if (panel) {
                     panel.classList.remove('open');
                 }
+                const tile = closeBtn.closest('.tile_stats_count');
+                if (tile) {
+                    tile.classList.remove('is-expanded');
+                }
                 return;
             }
 
@@ -712,9 +719,38 @@ function handlePageLayout() {
                 if (tile) {
                     const detailsPanel = tile.querySelector('.izban-tile-details');
                     if (detailsPanel) {
-                        detailsPanel.classList.toggle('open');
+                        const isOpen = detailsPanel.classList.contains('open');
+
+                        // Close any other open panels to show only one floating overlay at a time
+                        document.querySelectorAll('.izban-tile-details.open').forEach(p => {
+                            if (p !== detailsPanel) p.classList.remove('open');
+                        });
+
+                        // Clear is-expanded on other cards
+                        document.querySelectorAll('.tile_stats_count.is-expanded').forEach(t => {
+                            if (t !== tile) t.classList.remove('is-expanded');
+                        });
+
+                        if (isOpen) {
+                            detailsPanel.classList.remove('open');
+                            tile.classList.remove('is-expanded');
+                        } else {
+                            detailsPanel.classList.add('open');
+                            tile.classList.add('is-expanded');
+                        }
                     }
                 }
+                return;
+            }
+
+            // Clicked outside KPI cards - close all open panels and cards
+            if (!e.target.closest('.tile_stats_count')) {
+                document.querySelectorAll('.izban-tile-details.open').forEach(p => {
+                    p.classList.remove('open');
+                });
+                document.querySelectorAll('.tile_stats_count.is-expanded').forEach(t => {
+                    t.classList.remove('is-expanded');
+                });
             }
         });
     }
@@ -919,6 +955,13 @@ function findExistingTrainImage() {
 }
 
 function detectLoginPage() {
+    // If URL contains page= query or similar application page indicators, we are logged in - do not treat as login page
+    const urlLower = window.location.href.toLowerCase();
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.has('page') || urlLower.includes('page=') || urlLower.includes('sikayet') || urlLower.includes('complaint')) {
+        return;
+    }
+
     const isLoginPath = window.location.pathname.toLowerCase().includes('login') ||
         window.location.pathname.toLowerCase().includes('default.asp') ||
         window.location.pathname.toLowerCase().includes('default.aspx') ||
@@ -1280,6 +1323,229 @@ function setupLoginBackground() {
         if (el) {
             el.style.setProperty('background-image', 'none', 'important');
             el.style.setProperty('background-color', 'transparent', 'important');
+        }
+    });
+}
+
+function initializeSikayetlerPage() {
+    const urlLower = window.location.href.toLowerCase();
+    const queryParams = new URL(window.location.search);
+    const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler';
+
+    if (!isSikayetPage) return;
+
+    // We are on the complaints page! Let's modernize it.
+    const rightCol = document.querySelector('.right_col');
+    if (!rightCol) return;
+
+    // Check if we already injected our modern panel
+    if (document.getElementById('izban-modern-complaints-container')) return;
+
+    // Core mock database
+    const defaultComplaints = [
+        { id: "SK-9821B", date: "23.07.2026 08:30", passenger: "Ahmet Yılmaz", subject: "Klima arızası ve vagon sıcaklığı", station: "Alsancak Metro", status: "Cevap Bekliyor" },
+        { id: "SK-9820B", date: "23.07.2026 07:15", passenger: "Elif Demir", subject: "Valiz geçiş turnikesi çalışmaması", station: "Halkapınar Aktarma", status: "Cevaplandı", reply: "Turnike arızası teknik ekibimize bildirilmiş olup, saat 09:12 itibariyle giderilmiştir." },
+        { id: "SK-9819B", date: "22.07.2026 19:40", passenger: "Mehmet Kaya", subject: "Asansör düğmelerinin kırık olması", station: "Menemen İstasyonu", status: "Cevap Bekliyor" },
+        { id: "SK-9818B", date: "22.07.2026 18:25", passenger: "Selin Aksoy", subject: "Sefer iptali anonsunun gecikmesi", station: "Karşıyaka Gar", status: "Cevaplandı", reply: "Gecikme anons sistemi kontrol edilmiştir. Geri bildiriminiz için teşekkür ederiz." },
+        { id: "SK-9817B", date: "22.07.2026 14:10", passenger: "Can Yıldız", subject: "Güvenlik personelinin ilgisizliği", station: "Şirinyer Turnikeler", status: "Cevap Bekliyor" }
+    ];
+
+    // State management
+    const saved = localStorage.getItem('izban_complaints_data');
+    let complaints = saved ? JSON.parse(saved) : defaultComplaints;
+
+    // Try to parse existing complaints tables if present
+    const existingTable = document.querySelector('.table, .grid-view, table');
+    if (existingTable && !existingTable.classList.contains('izban-modern-table')) {
+        const rows = Array.from(existingTable.querySelectorAll('tbody tr, tr:not(:first-child)'));
+        if (rows.length > 0) {
+            const parsed = rows.map((row, index) => {
+                const cells = Array.from(row.querySelectorAll('td'));
+                if (cells.length < 3) return null;
+                const id = cells[0]?.textContent.trim() || `SK-9${100 + index}B`;
+                const date = cells[1]?.textContent.trim() || new Date().toLocaleString('tr-TR');
+                const passenger = cells[2]?.textContent.trim() || "Bilinmeyen Yolcu";
+                const subject = cells[3]?.textContent.trim() || "Şikayet İçeriği Belirtilmemiş";
+                const station = cells[4]?.textContent.trim() || "Tüm İstasyonlar";
+                const rawStatus = cells[5]?.textContent.trim().toLowerCase() || "";
+                const status = (rawStatus.includes("cevap") || rawStatus.includes("tamam") || rawStatus.includes("ok")) ? "Cevaplandı" : "Cevap Bekliyor";
+                return { id, date, passenger, subject, station, status };
+            }).filter(Boolean);
+            if (parsed.length > 0) {
+                complaints = parsed;
+            }
+        }
+    }
+
+    // Save complaints to localStorage
+    const saveComplaints = () => {
+        localStorage.setItem('izban_complaints_data', JSON.stringify(complaints));
+    };
+    saveComplaints(); // Save immediately in case parsed data was resolved
+
+    // Create the container
+    const container = document.createElement('div');
+    container.id = 'izban-modern-complaints-container';
+    container.className = 'row';
+
+    // Clear legacy elements (for a clean visual modernize layout)
+    const legacyPanels = rightCol.querySelectorAll('.row, .x_panel, .page-title');
+    legacyPanels.forEach(p => {
+        if (p.parentElement === rightCol) p.remove();
+    });
+
+    const renderTableHTML = () => {
+        let rowsHtml = '';
+        complaints.forEach(item => {
+            const statusClass = item.status === 'Cevaplandı' ? 'answered' : 'pending';
+            const statusIcon = item.status === 'Cevaplandı' ? '🟢 Cevaplandı' : '🔴 Cevap Bekliyor';
+            const btnHtml = item.status === 'Cevaplandı'
+                ? `<button class="btn btn-sm btn-default izban-btn-view-reply" data-id="${item.id}" style="margin: 0 !important; font-weight: 700; border-radius: 6px;">Yanıtı Gör</button>`
+                : `<button class="btn btn-sm btn-primary izban-btn-reply" data-id="${item.id}" style="margin: 0 !important; font-weight: 700; border-radius: 6px;">Yanıtla</button>`;
+
+            rowsHtml += `
+                <tr id="complaint-row-${item.id}">
+                    <td style="font-weight:700;">${item.id}</td>
+                    <td style="white-space:nowrap;">${item.date}</td>
+                    <td>
+                        <div>
+                            <div style="font-weight:700; font-size:13px; color:inherit;">${item.passenger}</div>
+                            <div style="font-size:11.5px; opacity:0.8; margin-top:2px;">${item.subject}</div>
+                        </div>
+                    </td>
+                    <td>${item.station}</td>
+                    <td>
+                        <span class="izban-status-badge ${statusClass}">${statusIcon}</span>
+                    </td>
+                    <td>
+                        ${btnHtml}
+                    </td>
+                </tr>
+                <tr id="reply-row-${item.id}" class="izban-reply-accordion-row" style="display:none;">
+                    <td colspan="6">
+                        <div class="izban-reply-box-inner">
+                            <label style="font-weight: 700; font-size: 12px; display: block; margin-bottom: 8px;">Cevap Taslağı Yazın</label>
+                            <textarea class="form-control izban-reply-textarea-${item.id}" rows="3" placeholder="Yolcuya iletilecek resmi cevabınızı giriniz..." style="width: 100%; margin-bottom: 12px; resize: vertical;"></textarea>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-sm btn-success izban-btn-submit-reply" data-id="${item.id}" style="border-radius: 6px; font-weight: 700;">Yanıtı Gönder</button>
+                                <button type="button" class="btn btn-sm btn-default izban-btn-close-reply" data-id="${item.id}" style="border-radius: 6px; font-weight: 700;">Kapat</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="view-reply-row-${item.id}" class="izban-reply-accordion-row" style="display:none;">
+                    <td colspan="6">
+                        <div class="izban-reply-box-inner">
+                            <label style="font-weight: 700; font-size: 12px; display: block; margin-bottom: 6px;">İletilen Resmi Yanıtınız</label>
+                            <div style="font-size: 12px; padding: 10px; background: rgba(0,0,0,0.02); border-radius: 6px; margin-bottom: 12px; line-height: 1.5;">
+                                ${item.reply || 'Cevap bulunamadı.'}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-default izban-btn-close-view" data-id="${item.id}" style="border-radius: 6px; font-weight: 700;">Kapat</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        return `
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="x_panel izban-sikayet-panel">
+                    <div class="x_title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 10px;">
+                        <h2 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fa fa-comments-o"></i> Gelen Şikayet Yönetimi</h2>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="x_content">
+                        <div class="table-responsive" style="border: none; overflow: visible;">
+                            <table class="table izban-modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Şikayet ID</th>
+                                        <th>Tarih</th>
+                                        <th>Yolcu / Konu</th>
+                                        <th>İstasyon / Hat</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
+    container.innerHTML = renderTableHTML();
+    rightCol.appendChild(container);
+
+    // Event listeners
+    container.addEventListener('click', (e) => {
+        const replyBtn = e.target.closest('.izban-btn-reply');
+        if (replyBtn) {
+            const id = replyBtn.dataset.id;
+            const replyRow = document.getElementById(`reply-row-${id}`);
+            if (replyRow) {
+                const isHidden = replyRow.style.display === 'none';
+                // Close all reply/view rows
+                container.querySelectorAll('.izban-reply-accordion-row').forEach(row => row.style.display = 'none');
+
+                if (isHidden) {
+                    replyRow.style.display = 'table-row';
+                }
+            }
+            return;
+        }
+
+        const viewBtn = e.target.closest('.izban-btn-view-reply');
+        if (viewBtn) {
+            const id = viewBtn.dataset.id;
+            const viewRow = document.getElementById(`view-reply-row-${id}`);
+            if (viewRow) {
+                const isHidden = viewRow.style.display === 'none';
+                // Close all reply/view rows
+                container.querySelectorAll('.izban-reply-accordion-row').forEach(row => row.style.display = 'none');
+
+                if (isHidden) {
+                    viewRow.style.display = 'table-row';
+                }
+            }
+            return;
+        }
+
+        const closeBtn = e.target.closest('.izban-btn-close-reply, .izban-btn-close-view');
+        if (closeBtn) {
+            const id = closeBtn.dataset.id;
+            const replyRow = document.getElementById(`reply-row-${id}`);
+            const viewRow = document.getElementById(`view-reply-row-${id}`);
+            if (replyRow) replyRow.style.display = 'none';
+            if (viewRow) viewRow.style.display = 'none';
+            return;
+        }
+
+        const submitBtn = e.target.closest('.izban-btn-submit-reply');
+        if (submitBtn) {
+            const id = submitBtn.dataset.id;
+            const textarea = container.querySelector(`.izban-reply-textarea-${id}`);
+            const replyVal = textarea ? textarea.value.trim() : "";
+
+            if (!replyVal) {
+                alert("Lütfen geçerli bir cevap metni yazın.");
+                return;
+            }
+
+            // Update item status in data
+            const item = complaints.find(c => c.id === id);
+            if (item) {
+                item.status = "Cevaplandı";
+                item.reply = replyVal;
+                saveComplaints();
+
+                // Re-render table layout
+                container.innerHTML = renderTableHTML();
+            }
         }
     });
 }
