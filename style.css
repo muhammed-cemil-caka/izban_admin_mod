@@ -2424,3 +2424,101 @@ body.dark-theme .izban-modal-list-item {
 #yolcu-filter-toolbar button#yolcu-clear-filter:hover {
     background: #dc2626 !important;
 }
+
+/* ====================================================
+   AÇIK İŞ EMRİ LISTESI MULTI-FILTER TOOLBAR (PHASE 24)
+   ==================================================== */
+#is-emri-filter-toolbar {
+    margin-bottom: 15px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    align-items: center !important;
+    background: rgba(30, 41, 59, 0.95) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.2s ease !important;
+}
+
+#is-emri-filter-toolbar .filter-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+#is-emri-filter-toolbar .filter-search-grow {
+    flex: 1 !important;
+}
+
+#is-emri-filter-toolbar .filter-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+#is-emri-filter-toolbar input,
+#is-emri-filter-toolbar select {
+    height: 36px !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: all 0.15s ease !important;
+}
+
+#is-emri-filter-toolbar input[type="text"] {
+    background: rgba(0, 0, 0, 0.3) !important;
+    width: 100% !important;
+}
+
+#is-emri-filter-toolbar input:focus,
+#is-emri-filter-toolbar select:focus {
+    border-color: #3b82f6 !important;
+    background: #243249 !important;
+}
+
+#is-emri-filter-toolbar select#filter-istasyon,
+#is-emri-filter-toolbar select#filter-kategori {
+    min-width: 170px !important;
+    padding: 8px 12px !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+}
+
+#is-emri-filter-toolbar select#filter-istasyon option,
+#is-emri-filter-toolbar select#filter-kategori option {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+/* Clear Button styling */
+#is-emri-filter-toolbar button#filter-clear-all {
+    height: 36px !important;
+    padding: 0 16px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    margin-top: 19px !important;
+    transition: all 0.15s ease !important;
+}
+
+#is-emri-filter-toolbar button#filter-clear-all:hover {
+    background: #dc2626 !important;
+}
