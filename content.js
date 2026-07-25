@@ -1908,6 +1908,20 @@ function populateSelectOptions(table) {
 
     if (istasyonSelects.length === 0 && kategoriSelects.length === 0) return;
 
+    // Detect column indexes dynamically from the header
+    let istasyonColIdx = 2; // Default fallback to 3rd column (index 2)
+    let kategoriColIdx = 3; // Default fallback to 4th column (index 3)
+
+    const headerCells = table.querySelectorAll('thead th, thead td, tbody tr:first-child th, tbody tr:first-child td');
+    headerCells.forEach((cell, idx) => {
+        const text = turkishToLower(cell.textContent || "").trim();
+        if (text.includes("istasyon") || text.includes("yer")) {
+            istasyonColIdx = idx;
+        } else if (text.includes("kategori") || text.includes("konu") || text.includes("grup")) {
+            kategoriColIdx = idx;
+        }
+    });
+
     const stations = new Set();
     const categories = new Set();
 
@@ -1915,15 +1929,13 @@ function populateSelectOptions(table) {
         const cells = tr.querySelectorAll('td, th');
         if (cells.length === 0) return;
 
-        // İstasyon: 3. column (td:nth-child(3) -> cell index 2)
-        const cellIst = cells[2];
+        const cellIst = cells[istasyonColIdx];
         if (cellIst) {
             const s = cellIst.textContent.replace(/\s+/g, ' ').trim();
             if (s) stations.add(s);
         }
 
-        // Kategori: 4. column (td:nth-child(4) -> cell index 3)
-        const cellKat = cells[3];
+        const cellKat = cells[kategoriColIdx];
         if (cellKat) {
             const c = cellKat.textContent.replace(/\s+/g, ' ').trim();
             if (c) categories.add(c);
@@ -2236,7 +2248,7 @@ function initAcikIsEmriFilter() {
         const headers = document.querySelectorAll('h2, h3, .panel-title, .x_title h2');
         for (const h of headers) {
             const text = turkishToLower(h.textContent || "");
-            if (text.includes("açık iş emri") || text.includes("acik is emri")) {
+            if (text.includes("açık iş emri") || text.includes("acik is emri") || text.includes("kuzey istasyonlar") || text.includes("güney istasyonlar") || text.includes("guney istasyonlar")) {
                 headingText = text;
                 targetHeadingElement = h;
                 break;
@@ -2271,7 +2283,7 @@ function initAcikIsEmriFilter() {
 
             let hasTargetHeading = !!targetHeadingElement;
 
-            const isTargetPage = queryParams.get('page') === '11' || urlLower.includes('page=11') || hasTargetHeading;
+            const isTargetPage = queryParams.get('page') === '11' || urlLower.includes('page=11') || urlLower.includes('part=kuzey') || urlLower.includes('part=guney') || urlLower.includes('part=north') || urlLower.includes('part=south') || hasTargetHeading;
             if (isTargetPage) {
                 let xPanel = targetHeadingElement ? targetHeadingElement.closest('.x_panel') : document.querySelector('.x_panel');
                 if (xPanel) {
@@ -2297,7 +2309,7 @@ function initAcikIsEmriFilter() {
             return;
         }
 
-        // Target check: page=11 or heading text containing "Açık İş Emri Listesi"
+        // Target check: page=11 or heading text containing "Açık İş Emri Listesi" / "Kuzey/Güney İstasyonlar"
         const urlLower = window.location.href.toLowerCase();
         let queryParams;
         try {
@@ -2308,7 +2320,7 @@ function initAcikIsEmriFilter() {
 
         let hasTargetHeading = !!targetHeadingElement;
 
-        const isTargetPage = queryParams.get('page') === '11' || urlLower.includes('page=11') || hasTargetHeading;
+        const isTargetPage = queryParams.get('page') === '11' || urlLower.includes('page=11') || urlLower.includes('part=kuzey') || urlLower.includes('part=guney') || urlLower.includes('part=north') || urlLower.includes('part=south') || hasTargetHeading;
         if (!isTargetPage) return;
 
         // Find the table and container .x_panel
@@ -2333,6 +2345,7 @@ function initAcikIsEmriFilter() {
 
         // 1. Map columns dynamically
         const allRows = Array.from(table.querySelectorAll('tbody tr'));
+        console.log('Kuzey İstasyonlar Filtresi Aktif', allRows.length);
 
         let idColIdx = 0;
         let dateColIdx = 1;
@@ -2429,10 +2442,12 @@ function initAcikIsEmriFilter() {
             const endVal = dateEndInput.value;
             const selectedStations = Array.from(istasyonSelect.selectedOptions).map(opt => opt.value);
             const selectedCategories = Array.from(kategoriSelect.selectedOptions).map(opt => opt.value);
-            const idFormVal = turkishToLower(idFormInput.value.trim());
+            const searchInputText = idFormInput.value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
             const currentDataRows = table.querySelectorAll('tbody tr');
             currentDataRows.forEach(tr => {
+                if (tr.children.length < 3) return; // Başlık ve Özel Satır Koruması
+
                 const cells = tr.querySelectorAll('td, th');
                 if (cells.length === 0) return;
 
@@ -2503,11 +2518,32 @@ function initAcikIsEmriFilter() {
                 }
 
                 // ID / Form No search
-                if (idFormVal) {
-                    let matchText = '';
-                    if (cells[idColIdx]) matchText += ' ' + cells[idColIdx].textContent.trim();
-                    matchText = turkishToLower(matchText);
-                    if (!matchText.includes(idFormVal)) isMatched = false;
+                if (searchInputText) {
+                    let matchesID = false;
+
+                    // Önce Spesifik Sütun Kontrolü
+                    if (cells[idColIdx]) {
+                        const cellIdText = cells[idColIdx].textContent.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        if (cellIdText.includes(searchInputText)) {
+                            matchesID = true;
+                        }
+                    }
+
+                    // Yedek Kalkan (Row Text Fallback)
+                    if (!matchesID) {
+                        const fullRowText = Array.from(tr.querySelectorAll('td'))
+                            .map(td => td.textContent)
+                            .join(' ')
+                            .replace(/[^a-zA-Z0-9]/g, '')
+                            .toLowerCase();
+                        if (fullRowText.includes(searchInputText)) {
+                            matchesID = true;
+                        }
+                    }
+
+                    if (!matchesID) {
+                        isMatched = false;
+                    }
                 }
 
                 tr.style.display = isMatched ? '' : 'none';
@@ -2519,6 +2555,7 @@ function initAcikIsEmriFilter() {
         istasyonSelect.addEventListener('change', applyFilters);
         kategoriSelect.addEventListener('change', applyFilters);
         idFormInput.addEventListener('input', applyFilters);
+        idFormInput.addEventListener('keyup', applyFilters);
 
         clearAllBtn.addEventListener('click', () => {
             dateStartInput.value = '';
