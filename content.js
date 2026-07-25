@@ -1650,6 +1650,144 @@ function initializeSikayetlerPage() {
     });
 })();
 
+function exportTableToPDF(tableElement, pageTitle) {
+    if (!tableElement) return;
+
+    const turkishToLower = (str) => {
+        return str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+    };
+
+    // Grab header row
+    const headerTr = tableElement.querySelector('thead tr') || tableElement.querySelector('tbody tr:first-child');
+    if (!headerTr) return;
+
+    const ths = Array.from(headerTr.querySelectorAll('th, td'));
+    const excludeIndices = [];
+    const cleanHeaders = [];
+
+    ths.forEach((th, idx) => {
+        // Check if header cell itself is hidden (e.g. month column filtering)
+        if (th.style.display === 'none') {
+            excludeIndices.push(idx);
+            return;
+        }
+        const text = turkishToLower(th.textContent || "");
+        if (text.includes("i̇şlem") || text.includes("işlem") || text.includes("ayrıntı") || text.includes("ayrinti") || text.includes("düzenle") || text.includes("duzenle")) {
+            excludeIndices.push(idx);
+            return;
+        }
+        cleanHeaders.push(th.textContent.trim());
+    });
+
+    // Grab all rows
+    const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
+    let rowHtml = "";
+    rows.forEach(tr => {
+        // Skip hidden rows
+        if (tr.style.display === 'none') return;
+        // Skip header if it is in tbody
+        if (!tableElement.querySelector('thead') && tr === headerTr) return;
+        // Skip spacer rows / colspan rows
+        if (tr.children.length < 3) return;
+
+        const cells = Array.from(tr.querySelectorAll('td, th'));
+        rowHtml += "<tr>";
+        cells.forEach((cell, idx) => {
+            if (excludeIndices.includes(idx)) return;
+            rowHtml += `<td>${cell.textContent.trim()}</td>`;
+        });
+        rowHtml += "</tr>";
+    });
+
+    const currentDateString = new Date().toLocaleDateString('tr-TR');
+    const printableHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>${pageTitle}</title>
+        <style>
+            body {
+                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                color: #333;
+                padding: 20px;
+                background-color: #fff;
+            }
+            .header-container {
+                text-align: center;
+                border-bottom: 2px solid #10b981;
+                padding-bottom: 12px;
+                margin-bottom: 20px;
+            }
+            h1 {
+                font-size: 20px;
+                color: #0f172a;
+                margin: 0 0 5px 0;
+            }
+            .date-subtitle {
+                font-size: 12px;
+                color: #64748b;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 11px;
+                margin-top: 15px;
+            }
+            th, td {
+                border: 1px solid #cbd5e1;
+                padding: 8px 10px;
+                text-align: left;
+            }
+            th {
+                background-color: #f8fafc;
+                color: #475569;
+                font-weight: 700;
+            }
+            tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            @media print {
+                body { padding: 0; }
+                .header-container { border-bottom-color: #000; }
+                @page { margin: 1.5cm; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header-container">
+            <h1>${pageTitle}</h1>
+            <div class="date-subtitle">Rapor Tarihi: ${currentDateString}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    ${cleanHeaders.map(h => `<th>${h}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+                ${rowHtml}
+            </tbody>
+        </table>
+        <script>
+            window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(printableHtml);
+        printWindow.document.close();
+    } else {
+        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+    }
+}
+
 function startYolcuPollingLoop() {
     if (window.yolcuIntervalId) {
         clearInterval(window.yolcuIntervalId);
@@ -1736,6 +1874,7 @@ function initYolcuSayilariFilter() {
                 <option value="aralık">Aralık</option>
             </select>
             <button id="yolcu-clear-filter" style="padding: 6px 16px; border-radius: 6px; background: #ef4444; color: #fff; border: none; cursor: pointer; height: 38px;">Temizle</button>
+            <button id="export-pdf-btn">📄 PDF İndir</button>
         `;
 
         // Prepend toolbar to x_content
@@ -1744,6 +1883,13 @@ function initYolcuSayilariFilter() {
         const yearSelect = toolbar.querySelector('#yolcu-year-select');
         const monthSelect = toolbar.querySelector('#yolcu-month-select');
         const clearBtn = toolbar.querySelector('#yolcu-clear-filter');
+        const pdfBtn = toolbar.querySelector('#export-pdf-btn');
+
+        pdfBtn.addEventListener('click', () => {
+            const h2 = xContent.closest('.x_panel')?.querySelector('h2, .panel-title') || document.querySelector('h2');
+            const title = h2 ? h2.textContent.trim() : 'Yolcu Sayıları Raporu';
+            exportTableToPDF(table, title);
+        });
 
         makeSelectMultipleDropdown(yearSelect);
         makeSelectMultipleDropdown(monthSelect);
@@ -2420,6 +2566,7 @@ function initAcikIsEmriFilter() {
                 <input type="text" id="filter-id-form" placeholder="ID / Form No Ara...">
             </div>
             <button id="filter-clear-all">Temizle</button>
+            <button id="export-pdf-btn">📄 PDF İndir</button>
         `;
 
         xContent.prepend(toolbar);
@@ -2436,6 +2583,13 @@ function initAcikIsEmriFilter() {
 
         const idFormInput = toolbar.querySelector('#filter-id-form');
         const clearAllBtn = toolbar.querySelector('#filter-clear-all');
+        const pdfBtn = toolbar.querySelector('#export-pdf-btn');
+
+        pdfBtn.addEventListener('click', () => {
+            const h2 = targetHeadingElement || xPanel?.querySelector('h2, .panel-title') || document.querySelector('h2');
+            const title = h2 ? h2.textContent.trim() : 'Açık İş Emri Raporu';
+            exportTableToPDF(table, title);
+        });
 
         const applyFilters = () => {
             const startVal = dateStartInput.value;
@@ -2765,6 +2919,7 @@ function initKapaliIsEmriFilter() {
                 <input type="text" id="kapali-filter-id-form" placeholder="ID / Form No Ara...">
             </div>
             <button id="kapali-filter-clear-all">Temizle</button>
+            <button id="export-pdf-btn">📄 PDF İndir</button>
         `;
 
         xContent.prepend(toolbar);
@@ -2781,6 +2936,13 @@ function initKapaliIsEmriFilter() {
 
         const idFormInput = toolbar.querySelector('#kapali-filter-id-form');
         const clearAllBtn = toolbar.querySelector('#kapali-filter-clear-all');
+        const pdfBtn = toolbar.querySelector('#export-pdf-btn');
+
+        pdfBtn.addEventListener('click', () => {
+            const h2 = targetHeadingElement || xPanel?.querySelector('h2, .panel-title') || document.querySelector('h2');
+            const title = h2 ? h2.textContent.trim() : 'Kapalı İş Emri Raporu';
+            exportTableToPDF(table, title);
+        });
 
         const applyFilters = () => {
             const startVal = dateStartInput.value;

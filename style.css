@@ -2584,3 +2584,36 @@ body:not(.dark-theme) .izban-table-summary {
 body:not(.dark-theme) .izban-table-summary .summary-value {
     color: #2563eb !important;
 }
+
+/* Export PDF Button styling */
+#is-emri-filter-toolbar button#export-pdf-btn,
+#kapali-is-emri-filter-toolbar button#export-pdf-btn,
+#yolcu-filter-toolbar button#export-pdf-btn {
+    height: 36px !important;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #10b981 !important;
+    color: #ffffff !important;
+    margin-top: 19px !important;
+    transition: background 0.2s ease !important;
+    gap: 6px !important;
+}
+
+#is-emri-filter-toolbar button#export-pdf-btn:hover,
+#kapali-is-emri-filter-toolbar button#export-pdf-btn:hover,
+#yolcu-filter-toolbar button#export-pdf-btn:hover {
+    background: #059669 !important;
+}
+
+/* Yolcu Sayıları special toolbar button margin-top fix */
+#yolcu-filter-toolbar button#export-pdf-btn {
+    margin-top: 0 !important;
+    height: 38px !important;
+}
