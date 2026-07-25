@@ -843,6 +843,8 @@ function handlePageLayout() {
             }, 200);
         }
     });
+
+    injectListCardPdfButtons();
 }
 
 function handleBirthdaySection() {
@@ -1934,6 +1936,361 @@ function exportTableToPDF(tableElement, pageTitle) {
     } else {
         alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
     }
+}
+
+function exportListCardToPDF(cardElement, cardTitle) {
+    if (!cardElement) return;
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+    const formattedTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const safeTitle = cardTitle.replace(/\s+/g, '_')
+        .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+        .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+        .replace(/Ş/g, 'S').replace(/ş/g, 's')
+        .replace(/İ/g, 'I').replace(/ı/g, 'i')
+        .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+        .replace(/Ç/g, 'C').replace(/ç/g, 'c')
+        .replace(/[^a-zA-Z0-9_]/g, '');
+    const fileName = `IZBAN_${safeTitle}_Raporu_${dateStr}`;
+
+    let contentHtml = '';
+
+    if (cardTitle === 'İzin & Rapor Durumu') {
+        const izinliList = [];
+        const raporluList = [];
+        const contentEl = cardElement.querySelector('.x_content');
+
+        if (contentEl) {
+            let currentGroup = 'izinli';
+            const descendants = Array.from(contentEl.querySelectorAll('h3, h4, strong, p, li, tr'));
+            descendants.forEach(el => {
+                let rawText = el.textContent.replace(/Tebrik\s*Et/gi, '').replace(/\s+/g, ' ').trim();
+                if (!rawText || rawText.includes('Settings')) return;
+
+                const textLower = rawText.toLowerCase();
+                if (textLower.includes('raporlu') && (textLower.includes('personel') || el.tagName.toLowerCase() === 'h3' || el.tagName.toLowerCase() === 'h4' || el.tagName.toLowerCase() === 'strong')) {
+                    currentGroup = 'raporlu';
+                    return;
+                }
+                if (textLower.includes('izinli') && (textLower.includes('personel') || el.tagName.toLowerCase() === 'h3' || el.tagName.toLowerCase() === 'h4' || el.tagName.toLowerCase() === 'strong')) {
+                    currentGroup = 'izinli';
+                    return;
+                }
+
+                if (el.tagName.toLowerCase() === 'tr') {
+                    const cells = Array.from(el.querySelectorAll('td'));
+                    if (cells.length >= 2) {
+                        let name = cells[0].textContent.replace(/Tebrik\s*Et/gi, '').replace(/\s+/g, ' ').trim();
+                        let dates = cells[1].textContent.replace(/\s+/g, ' ').trim();
+
+                        const parenMatch = name.match(/\(([^)]+)\)/);
+                        if (parenMatch) {
+                            dates = parenMatch[1];
+                            name = name.replace(parenMatch[0], '').trim();
+                        }
+
+                        if (name.includes('Settings') || !name) return;
+
+                        if (currentGroup === 'izinli') {
+                            if (!izinliList.some(item => item.name === name)) {
+                                izinliList.push({ name, dates });
+                            }
+                        } else {
+                            if (!raporluList.some(item => item.name === name)) {
+                                raporluList.push({ name, dates });
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                const hasSubBlocks = Array.from(el.children).some(child =>
+                    ['li', 'p', 'tr', 'td', 'h3', 'h4', 'strong'].includes(child.tagName.toLowerCase())
+                );
+                if (hasSubBlocks) return;
+
+                if (rawText.length > 2 && !rawText.includes('Personel') && !rawText.includes('Durumu') && !rawText.includes('mutluluklar')) {
+                    const match = rawText.match(/^([^(]+)(?:\(([^)]+)\))?/);
+                    if (match) {
+                        const name = match[1].trim();
+                        const dates = match[2] ? match[2].trim() : '';
+
+                        if (name.includes('Settings') || !name) return;
+
+                        if (currentGroup === 'izinli') {
+                            if (!izinliList.some(item => item.name === name)) {
+                                izinliList.push({ name, dates });
+                            }
+                        } else {
+                            if (!raporluList.some(item => item.name === name)) {
+                                raporluList.push({ name, dates });
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const izinliRows = izinliList.map(item => `<tr><td>${item.name}</td><td>${item.dates}</td></tr>`).join('');
+        const raporluRows = raporluList.map(item => `<tr><td>${item.name}</td><td>${item.dates}</td></tr>`).join('');
+
+        contentHtml = `
+            <h3 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; margin-top: 20px;">İzinli Personel(ler)</h3>
+            ${izinliList.length > 0 ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Personel İsim</th>
+                            <th>İzin Tarih Aralığı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${izinliRows}
+                    </tbody>
+                </table>
+            ` : '<p class="empty-state">Şu anda izinli personel bulunmamaktadır.</p>'}
+
+            <h3 style="color: #0f172a; border-bottom: 2px solid #ef4444; padding-bottom: 5px; margin-top: 30px;">Raporlu Personel(ler)</h3>
+            ${raporluList.length > 0 ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Personel İsim</th>
+                            <th>Rapor Tarih Aralığı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${raporluRows}
+                    </tbody>
+                </table>
+            ` : '<p class="empty-state">Şu anda raporlu personel bulunmamaktadır.</p>'}
+        `;
+    } else if (cardTitle === 'Doğum Günü') {
+        const emptyEl = cardElement.querySelector('.izban-birthday-empty');
+        if (emptyEl || cardElement.textContent.includes('bulunmamaktadır') || cardElement.textContent.includes('bulunmuyor') || cardElement.textContent.includes('bulunmadı')) {
+            contentHtml = '<div class="empty-state">Bugün doğum günü olan personel bulunmamaktadır.</div>';
+        } else {
+            const birthdayList = [];
+            const listItems = Array.from(cardElement.querySelectorAll('.msg_list li, ul li, .izban-birthday-list-item, .birthday-item'));
+            if (listItems.length > 0) {
+                listItems.forEach(item => {
+                    let text = item.textContent.replace(/Tebrik\s*Et/gi, '').replace(/\s+/g, ' ').trim();
+                    if (!text || text.includes('Settings')) return;
+
+                    const dateMatch = text.match(/\(([^)]+)\)/);
+                    let name = text;
+                    let birthday = '';
+                    if (dateMatch) {
+                        birthday = dateMatch[1];
+                        name = text.replace(dateMatch[0], '').trim();
+                    }
+                    if (name.includes('Settings') || !name) return;
+
+                    if (!birthdayList.some(i => i.name === name)) {
+                        birthdayList.push({ name, birthday });
+                    }
+                });
+            } else {
+                const paragraphs = Array.from(cardElement.querySelectorAll('.x_content p, .x_content div'));
+                paragraphs.forEach(p => {
+                    if (p.children.length > 0 && Array.from(p.children).some(c => c.tagName.toLowerCase() === 'p' || c.tagName.toLowerCase() === 'div')) {
+                        return;
+                    }
+                    let text = p.textContent.replace(/Tebrik\s*Et/gi, '').replace(/\s+/g, ' ').trim();
+                    if (!text || text.includes('Settings') || text.includes('doğum günü') || text.includes('mutluluklar')) return;
+
+                    const dateMatch = text.match(/\(([^)]+)\)/);
+                    let name = text;
+                    let birthday = '';
+                    if (dateMatch) {
+                        birthday = dateMatch[1];
+                        name = text.replace(dateMatch[0], '').trim();
+                    }
+                    if (name.includes('Settings') || !name) return;
+
+                    if (!birthdayList.some(i => i.name === name)) {
+                        birthdayList.push({ name, birthday });
+                    }
+                });
+            }
+
+            let rowsHtml = birthdayList.map(item => `
+                <tr>
+                    <td style="font-weight: 600; font-size: 13px; color: #1e293b;">${item.name}</td>
+                    <td>${item.birthday || 'Bugün'}</td>
+                </tr>
+            `).join('');
+
+            contentHtml = rowsHtml ? `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Personel İsim</th>
+                            <th>Doğum Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            ` : '<div class="empty-state">Bugün doğum günü olan personel bulunmamaktadır.</div>';
+        }
+    }
+
+    const printableHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>İZBAN - ${cardTitle} Raporu</title>
+        <style>
+            body {
+                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                color: #334155;
+                padding: 30px;
+                background-color: #ffffff !important;
+            }
+            .header-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #10b981;
+                padding-bottom: 15px;
+                margin-bottom: 25px;
+            }
+            .title-section h1 {
+                font-size: 22px;
+                color: #0f172a;
+                margin: 0;
+                font-weight: 700;
+            }
+            .title-section .subtitle {
+                font-size: 13px;
+                color: #64748b;
+                margin-top: 4px;
+            }
+            .date-badge {
+                padding: 6px 12px;
+                background-color: #f1f5f9;
+                border-radius: 6px;
+                font-size: 12px;
+                color: #475569;
+                font-weight: 600;
+                text-align: right;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+                margin-top: 15px;
+            }
+            th, td {
+                border: 1px solid #cbd5e1;
+                padding: 10px 12px;
+                text-align: left;
+            }
+            th {
+                background-color: #f8fafc;
+                color: #475569;
+                font-weight: 700;
+            }
+            tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 30px;
+                font-weight: 600;
+                color: #64748b;
+                background-color: #f8fafc;
+                border: 1px dashed #cbd5e1;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+            @media print {
+                body { padding: 0; }
+                @page { margin: 1.5cm; }
+                table { page-break-inside: avoid; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header-container">
+            <div class="title-section">
+                <h1>İZBAN - ${cardTitle} Raporu</h1>
+                <div class="subtitle">Sistem Raporlama Modülü</div>
+            </div>
+            <div class="date-badge">
+                Tarih: ${dateStr}<br/> Saat: ${formattedTime}
+            </div>
+        </div>
+        <div style="margin-top: 20px;">
+            ${contentHtml}
+        </div>
+        <script>
+            window.onload = function() {
+                document.title = "${fileName}";
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(printableHtml);
+        printWindow.document.close();
+    } else {
+        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+    }
+}
+
+function injectListCardPdfButtons() {
+    const panels = document.querySelectorAll('.x_panel');
+    panels.forEach(panel => {
+        const titleEl = panel.querySelector('.x_title h2');
+        if (!titleEl) return;
+        const titleText = (titleEl.textContent || '').trim();
+
+        let cardType = '';
+        if (titleText.includes('İzin & Rapor Durumu') || titleText.includes('İzinler') || titleText.includes('İzin')) {
+            if (!titleText.includes('Doküman') && !titleText.includes('Revize')) {
+                cardType = 'İzin & Rapor Durumu';
+            }
+        } else if (titleText.includes('Doğum Günü')) {
+            cardType = 'Doğum Günü';
+        }
+
+        if (cardType) {
+            const titleDiv = panel.querySelector('.x_title');
+            if (!titleDiv) return;
+
+            if (titleDiv.querySelector('.list-pdf-btn')) return;
+
+            const btn = document.createElement('button');
+            btn.className = 'list-pdf-btn';
+            btn.innerHTML = '📄 PDF İndir';
+
+            const toolbox = titleDiv.querySelector('.panel_toolbox, .navbar-right');
+            if (toolbox) {
+                toolbox.parentNode.insertBefore(btn, toolbox.nextSibling);
+            } else {
+                btn.style.float = 'right';
+                titleDiv.appendChild(btn);
+            }
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                exportListCardToPDF(panel, cardType);
+            });
+        }
+    });
 }
 
 function startYolcuPollingLoop() {

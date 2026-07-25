@@ -2617,3 +2617,28 @@ body:not(.dark-theme) .izban-table-summary .summary-value {
     margin-top: 0 !important;
     height: 38px !important;
 }
+
+/* List PDF Download Button styles */
+.list-pdf-btn {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    float: right !important;
+    margin-top: 3px !important;
+    margin-left: 15px !important;
+    margin-right: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    transition: background 0.2s ease !important;
+    font-family: inherit !important;
+}
+
+.list-pdf-btn:hover {
+    background: #059669 !important;
+}
