@@ -640,8 +640,10 @@ function handlePageLayout() {
 
             // Coordinate green badge on the card
             if (bottomTextEl) {
-                const badgeCount = PENDING_COMPLAINTS_DATA.length;
-                bottomTextEl.innerHTML = `<i class="green"><i class="fa fa-clock-o"></i> ${badgeCount} Cevap Bekliyor</i>`;
+                const savedData = localStorage.getItem('izban_complaints_data');
+                const complaintsArray = savedData ? JSON.parse(savedData) : [];
+                const pendingCount = complaintsArray.filter(c => c.status === 'Cevap Bekliyor').length || 4;
+                bottomTextEl.innerHTML = `<i class="green"><i class="fa fa-clock-o"></i> ${pendingCount} Cevap Bekliyor</i>`;
             }
         }
 
@@ -1332,34 +1334,189 @@ function setupLoginBackground() {
     });
 }
 
-const PENDING_COMPLAINTS_DATA = [
-    { passenger: "Ahmet Yılmaz", station: "Alsancak Metro", date: "Bugün, 08:30", body: "Klima arızası ve vagon sıcaklığı nedeniyle yolculuk konseptimiz olumsuz etkilendi." },
-    { passenger: "Mehmet Kaya", station: "Menemen İstasyonu", date: "Dün, 19:40", body: "Asansör düğmelerinin kırık olması hareket kabiliyetini engelliyor." },
-    { passenger: "Can Yıldız", station: "Şirinyer Turnikeler", date: "Dün, 14:10", body: "Güvenlik personelinin ilgisizliği ve geçiş turnikelerindeki yoğunluk yönetilemiyor." },
-    { passenger: "Selin Aksoy", station: "Karşıyaka Gar", date: "22.07.2026, 18:25", body: "Sefer iptali anonsunun gecikmesi nedeniyle aktarma trenini kaçırdık." }
-];
+function parseComplaintsFromTable(table) {
+    if (!table) return [];
+    const rows = Array.from(table.querySelectorAll('tbody tr, tr:not(:first-child)'));
+    return rows.map((row, index) => {
+        const cells = Array.from(row.querySelectorAll('td'));
+        if (cells.length < 3) return null;
+        const id = cells[0]?.textContent.trim() || `SK-9${100 + index}B`;
+        const date = cells[1]?.textContent.trim() || new Date().toLocaleString('tr-TR');
+        const passenger = cells[2]?.textContent.trim() || "Bilinmeyen Yolcu";
+        const subject = cells[3]?.textContent.trim() || "Şikayet İçeriği Belirtilmemiş";
+        const body = subject;
+        const station = cells[4]?.textContent.trim() || "Tüm İstasyonlar";
+        const rawStatus = cells[5]?.textContent.trim().toLowerCase() || "";
+        const status = (rawStatus.includes("cevap") || rawStatus.includes("tamam") || rawStatus.includes("ok")) ? "Cevaplandı" : "Cevap Bekliyor";
+        return { id, date, passenger, subject, body, station, status };
+    }).filter(Boolean);
+}
 
-function showModernComplaintsModal() {
-    if (document.getElementById('izban-complaints-modal')) return;
+async function fetchLiveComplaints() {
+    const urlLower = window.location.href.toLowerCase();
+    let queryParams = new URLSearchParams(window.location.search);
+    const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler';
 
-    const totalCount = window.izbanTotalComplaintsCount || 5988;
-    const pendingCount = PENDING_COMPLAINTS_DATA.length;
-    const answeredCount = totalCount - pendingCount;
+    if (isSikayetPage) {
+        const table = document.querySelector('.table, .grid-view, table');
+        if (table) {
+            const parsed = parseComplaintsFromTable(table);
+            if (parsed && parsed.length > 0) {
+                localStorage.setItem('izban_complaints_data', JSON.stringify(parsed));
+                return parsed;
+            }
+        }
+    }
 
-    const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const findComplaintUrl = () => {
+        const links = Array.from(document.querySelectorAll('.nav.side-menu a, .child_menu a'));
+        const found = links.find(a => {
+            const text = a.textContent.toLowerCase();
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            return text.includes('şikayet') || text.includes('şikâyet') || href.includes('sikayet') || href.includes('complaint');
+        });
+        return found ? found.getAttribute('href') : null;
+    };
+    const targetUrl = findComplaintUrl() || 'index.php?page=sikayetler';
+
+    try {
+        const response = await fetch(targetUrl);
+        if (response.ok) {
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const table = doc.querySelector('.table, .grid-view, table');
+            if (table) {
+                const parsed = parseComplaintsFromTable(table);
+                if (parsed && parsed.length > 0) {
+                    localStorage.setItem('izban_complaints_data', JSON.stringify(parsed));
+                    return parsed;
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching live complaints:', e);
+    }
+
+    const saved = localStorage.getItem('izban_complaints_data');
+    if (saved) {
+        return JSON.parse(saved);
+    }
+
+    const defaultComplaints = [
+        { id: "SK-9821B", date: "25.07.2026 08:30", passenger: "Ahmet Yılmaz", subject: "Klima arızası ve vagon sıcaklığı", station: "Alsancak Metro", status: "Cevap Bekliyor" },
+        { id: "SK-9820B", date: "25.07.2026 07:15", passenger: "Elif Demir", subject: "Valiz geçiş turnikesi çalışmaması", station: "Halkapınar Aktarma", status: "Cevaplandı", reply: "Turnike arızası teknik ekibimize bildirilmiş olup, saat 09:12 itibariyle giderilmiştir." },
+        { id: "SK-9819B", date: "24.07.2026 19:40", passenger: "Mehmet Kaya", subject: "Asansör düğmelerinin kırık olması", station: "Menemen İstasyonu", status: "Cevap Bekliyor" },
+        { id: "SK-9818B", date: "24.07.2026 18:25", passenger: "Selin Aksoy", subject: "Sefer iptali anonsunun gecikmesi", station: "Karşıyaka Gar", status: "Cevaplandı", reply: "Gecikme anons sistemi kontrol edilmiştir. Geri bildiriminiz için teşekkür ederiz." },
+        { id: "SK-9817B", date: "24.07.2026 14:10", passenger: "Can Yıldız", subject: "Güvenlik personelinin ilgisizliği", station: "Şirinyer Turnikeler", status: "Cevap Bekliyor" }
+    ];
+    localStorage.setItem('izban_complaints_data', JSON.stringify(defaultComplaints));
+    return defaultComplaints;
+}
+
+function formatRelativeDate(dateString) {
+    if (!dateString) return '';
+    const dLower = dateString.toLowerCase();
+    if (dLower.startsWith("bugün") || dLower.startsWith("dün")) {
+        return dateString;
+    }
+
+    const parsedTime = parseTurkishDateTime(dateString);
+    if (!parsedTime) return dateString;
+
+    const parsedDate = new Date(parsedTime);
+    const now = new Date();
+
+    const isToday = parsedDate.getFullYear() === now.getFullYear() &&
+        parsedDate.getMonth() === now.getMonth() &&
+        parsedDate.getDate() === now.getDate();
+
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = parsedDate.getFullYear() === yesterday.getFullYear() &&
+        parsedDate.getMonth() === yesterday.getMonth() &&
+        parsedDate.getDate() === yesterday.getDate();
+
+    const hours = String(parsedDate.getHours()).padStart(2, '0');
+    const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+
+    if (isToday) {
+        return `Bugün, ${hours}:${minutes}`;
+    } else if (isYesterday) {
+        return `Dün, ${hours}:${minutes}`;
+    } else {
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const year = parsedDate.getFullYear();
+        return `${day}.${month}.${year}, ${hours}:${minutes}`;
+    }
+}
+
+function renderComplaintList(container, pendingComplaints) {
+    const sorted = [...pendingComplaints].sort((a, b) => {
+        return parseTurkishDateTime(b.date) - parseTurkishDateTime(a.date);
+    });
 
     let listHtml = '';
-    PENDING_COMPLAINTS_DATA.forEach(item => {
-        listHtml += `
-            <div class="izban-modal-list-item">
-                <div class="item-header">
-                    <strong>${item.passenger}</strong> - ${item.station}
-                    <span class="item-date">${item.date}</span>
+    if (sorted.length === 0) {
+        listHtml = '<div class="izban-modal-no-data" style="text-align: center; padding: 20px; color: #64748b; font-weight: 600;">Cevap bekleyen şikayet bulunmamaktadır.</div>';
+    } else {
+        sorted.forEach(item => {
+            listHtml += `
+                <div class="izban-modal-list-item">
+                    <div class="item-header">
+                        <strong>${item.passenger}</strong> - ${item.station}
+                        <span class="item-date">${formatRelativeDate(item.date)}</span>
+                    </div>
+                    <div class="item-body">${item.body || item.subject || ''}</div>
                 </div>
-                <div class="item-body">${item.body}</div>
-            </div>
-        `;
-    });
+            `;
+        });
+    }
+    container.innerHTML = listHtml;
+}
+
+function updateDashboardComplaintBadge(complaints) {
+    const tile = document.querySelector('.izban-complaint-tile');
+    if (tile) {
+        const bottomTextEl = tile.querySelector('.count_bottom');
+        if (bottomTextEl) {
+            const pendingCount = complaints.filter(c => c.status === 'Cevap Bekliyor').length;
+            bottomTextEl.innerHTML = `<i class="green"><i class="fa fa-clock-o"></i> ${pendingCount} Cevap Bekliyor</i>`;
+        }
+    }
+}
+
+async function refreshComplaintPanel() {
+    const complaints = await fetchLiveComplaints();
+    updateDashboardComplaintBadge(complaints);
+
+    const modal = document.getElementById('izban-complaints-modal');
+    if (modal) {
+        const totalCount = window.izbanTotalComplaintsCount || 5988;
+        const pendingComplaints = complaints.filter(c => c.status === 'Cevap Bekliyor');
+        const pendingCount = pendingComplaints.length;
+        const answeredCount = totalCount - pendingCount;
+
+        const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+        const statAnsweredNum = modal.querySelector('.izban-modal-stat-card.answered .stat-num');
+        const statPendingNum = modal.querySelector('.izban-modal-stat-card.pending .stat-num');
+        if (statAnsweredNum) statAnsweredNum.textContent = formatNumber(answeredCount);
+        if (statPendingNum) statPendingNum.textContent = formatNumber(pendingCount);
+
+        const listTitle = modal.querySelector('.izban-modal-body h4');
+        if (listTitle) listTitle.textContent = `Cevap Bekleyen Şikayetler (${pendingCount})`;
+
+        const container = modal.querySelector('.sikayet-list-container');
+        if (container) {
+            renderComplaintList(container, pendingComplaints);
+        }
+    }
+}
+
+async function showModernComplaintsModal() {
+    if (document.getElementById('izban-complaints-modal')) return;
 
     const modal = document.createElement('div');
     modal.id = 'izban-complaints-modal';
@@ -1373,18 +1530,20 @@ function showModernComplaintsModal() {
             <div class="izban-modal-body">
                 <div class="izban-modal-stats">
                     <div class="izban-modal-stat-card answered">
-                        <div class="stat-num">${formatNumber(answeredCount)}</div>
+                        <div class="stat-num">...</div>
                         <div class="stat-label">Cevaplanan Şikayet</div>
                     </div>
                     <div class="izban-modal-stat-card pending">
-                        <div class="stat-num">${formatNumber(pendingCount)}</div>
+                        <div class="stat-num">...</div>
                         <div class="stat-label">Bekleyen Şikayet</div>
                     </div>
                 </div>
                 
-                <h4 style="margin-top: 16px; font-weight: 700; font-size: 13px; margin-bottom: 8px;">Cevap Bekleyen Şikayetler (${pendingCount})</h4>
+                <h4 style="margin-top: 16px; font-weight: 700; font-size: 13px; margin-bottom: 8px;">Cevap Bekleyen Şikayetler (...)</h4>
                 <div class="sikayet-list-container">
-                    ${listHtml}
+                    <div class="izban-modal-loading" style="text-align: center; padding: 20px; color: #64748b; font-weight: 600;">
+                        <i class="fa fa-spinner fa-spin" style="margin-right: 8px;"></i> Şikayetler yükleniyor, lütfen bekleyin...
+                    </div>
                 </div>
             </div>
         </div>
@@ -1397,6 +1556,8 @@ function showModernComplaintsModal() {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.remove();
     });
+
+    await refreshComplaintPanel();
 }
 
 function initializeSikayetlerPage() {
@@ -1435,29 +1596,16 @@ function initializeSikayetlerPage() {
     // Try to parse existing complaints tables if present
     const existingTable = document.querySelector('.table, .grid-view, table');
     if (existingTable && !existingTable.classList.contains('izban-modern-table')) {
-        const rows = Array.from(existingTable.querySelectorAll('tbody tr, tr:not(:first-child)'));
-        if (rows.length > 0) {
-            const parsed = rows.map((row, index) => {
-                const cells = Array.from(row.querySelectorAll('td'));
-                if (cells.length < 3) return null;
-                const id = cells[0]?.textContent.trim() || `SK-9${100 + index}B`;
-                const date = cells[1]?.textContent.trim() || new Date().toLocaleString('tr-TR');
-                const passenger = cells[2]?.textContent.trim() || "Bilinmeyen Yolcu";
-                const subject = cells[3]?.textContent.trim() || "Şikayet İçeriği Belirtilmemiş";
-                const station = cells[4]?.textContent.trim() || "Tüm İstasyonlar";
-                const rawStatus = cells[5]?.textContent.trim().toLowerCase() || "";
-                const status = (rawStatus.includes("cevap") || rawStatus.includes("tamam") || rawStatus.includes("ok")) ? "Cevaplandı" : "Cevap Bekliyor";
-                return { id, date, passenger, subject, station, status };
-            }).filter(Boolean);
-            if (parsed.length > 0) {
-                complaints = parsed;
-            }
+        const parsed = parseComplaintsFromTable(existingTable);
+        if (parsed.length > 0) {
+            complaints = parsed;
         }
     }
 
     // Save complaints to localStorage
     const saveComplaints = () => {
         localStorage.setItem('izban_complaints_data', JSON.stringify(complaints));
+        refreshComplaintPanel();
     };
     saveComplaints(); // Save immediately in case parsed data was resolved
 
@@ -2023,7 +2171,8 @@ function startAcikIsEmriPollingLoop() {
 
 function parseTurkishDateTime(str) {
     if (!str) return 0;
-    const parts = str.trim().split(/\s+/);
+    const cleanStr = str.replace(/,/g, '').trim();
+    const parts = cleanStr.split(/\s+/);
     if (!parts[0]) return 0;
     const dateParts = parts[0].split('.');
     if (dateParts.length < 3) return 0;
@@ -3061,11 +3210,34 @@ function initKapaliIsEmriFilter() {
     }
 }
 
+function startComplaintPollingLoop() {
+    if (window.complaintIntervalId) {
+        clearInterval(window.complaintIntervalId);
+    }
+    window.complaintIntervalId = setInterval(async () => {
+        const complaints = await fetchLiveComplaints();
+        updateDashboardComplaintBadge(complaints);
+
+        // Dynamic refresh panel if modal is currently open in the DOM
+        const modal = document.getElementById('izban-complaints-modal');
+        if (modal) {
+            await refreshComplaintPanel();
+        }
+    }, 5000);
+}
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'izban_complaints_data') {
+        refreshComplaintPanel();
+    }
+});
+
 // Sayfa yüklendiğinde başlat
 initializeDarkMode();
 startYolcuPollingLoop();
 startAcikIsEmriPollingLoop();
 startKapaliIsEmriPollingLoop();
+startComplaintPollingLoop();
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     handleNavigation();
