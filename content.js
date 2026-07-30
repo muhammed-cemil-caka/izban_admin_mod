@@ -1538,9 +1538,9 @@ function renderComplaintModal() {
     const modalContainer = modal.querySelector('.sikayet-list-container');
     if (!modalContainer) return;
 
-    // Eğer liveComplaints boşsa veya veriler çekilemediyse EKRANA KART BASMA!
-    if (!liveComplaints || liveComplaints.length === 0) {
-        modalContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">⚠️ Canlı şikayet verileri yüklenemedi / Bekleyen aktif şikayet yok.</div>';
+    // Eğer liveComplaints verisi henüz yüklenmediyse (null ise)
+    if (liveComplaints === null) {
+        modalContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">⚠️ Canlı şikayet verileri yüklenemedi.</div>';
         return;
     }
 
@@ -1567,7 +1567,7 @@ function renderComplaintModal() {
 
     let listHtml = '';
     if (sorted.length === 0) {
-        listHtml = '<div style="padding:20px; text-align:center; color:#94a3b8;">⚠️ Canlı şikayet verileri yüklenemedi / Bekleyen aktif şikayet yok.</div>';
+        listHtml = '<div style="padding:20px; text-align:center; color:#10b981; font-weight: 600;">✅ Sistemde cevap bekleyen aktif bir şikayet bulunmamaktadır.</div>';
     } else {
         listHtml = sorted.map(item => {
             const passenger = item.musteri_adi || item.passenger || 'Bilinmeyen Yolcu';
@@ -1623,6 +1623,9 @@ async function refreshComplaintPanel() {
 async function openModal() {
     if (document.getElementById('izban-complaints-modal')) return;
 
+    const totalCount = window.izbanTotalComplaintsCount || 5988;
+    const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
     const modal = document.createElement('div');
     modal.id = 'izban-complaints-modal';
     modal.className = 'izban-modal-overlay';
@@ -1635,16 +1638,16 @@ async function openModal() {
             <div class="izban-modal-body">
                 <div class="izban-modal-stats">
                     <div class="izban-modal-stat-card answered">
-                        <div class="stat-num">...</div>
+                        <div class="stat-num">${formatNumber(totalCount)}</div>
                         <div class="stat-label">Cevaplanan Şikayet</div>
                     </div>
                     <div class="izban-modal-stat-card pending">
-                        <div class="stat-num">...</div>
+                        <div class="stat-num">0</div>
                         <div class="stat-label">Bekleyen Şikayet</div>
                     </div>
                 </div>
                 
-                <h4 style="margin-top: 16px; font-weight: 700; font-size: 13px; margin-bottom: 8px;">Cevap Bekleyen Şikayetler (...)</h4>
+                <h4 style="margin-top: 16px; font-weight: 700; font-size: 13px; margin-bottom: 8px;">Cevap Bekleyen Şikayetler (0)</h4>
                 <div class="sikayet-list-container">
                     <div class="izban-modal-loading" style="text-align: center; padding: 20px; color: #64748b; font-weight: 600;">
                         <i class="fa fa-spinner fa-spin" style="margin-right: 8px;"></i> Şikayetler yükleniyor, lütfen bekleyin...
