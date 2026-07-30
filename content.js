@@ -1350,70 +1350,135 @@ function parseComplaintsFromTable(table) {
         const station = cells[4]?.textContent.trim() || "Tüm İstasyonlar";
         const rawStatus = cells[5]?.textContent.trim().toLowerCase() || "";
         const status = (rawStatus.includes("cevap") || rawStatus.includes("tamam") || rawStatus.includes("ok")) ? "Cevaplandı" : "Cevap Bekliyor";
-        return { id, date, passenger, subject, body, station, status };
+        return {
+            id,
+            tarih: date,
+            musteri_adi: passenger,
+            konu: subject,
+            mesaj: body,
+            istasyon: station,
+            status,
+            date,
+            passenger,
+            subject,
+            body,
+            station
+        };
     }).filter(Boolean);
+}
+
+function sanitizeComplaints(complaints) {
+    if (!Array.isArray(complaints)) return [];
+    const mockNames = [
+        "ahmet yilmaz", "ahmet yılmaz",
+        "mehmet kaya",
+        "can yildiz", "can yıldız",
+        "elif demir",
+        "selin aksoy"
+    ];
+    return complaints.filter(item => {
+        if (!item) return false;
+
+        const passenger = (item.musteri_adi || item.passenger || "").toLowerCase().trim();
+        const subject = (item.konu || item.subject || "").toLowerCase().trim();
+        const msg = (item.mesaj || item.body || "").toLowerCase().trim();
+
+        if (!passenger || passenger === "bilinmeyen yolcu" || passenger.length < 3) return false;
+
+        if (mockNames.some(name => passenger.includes(name))) return false;
+
+        const mockKeywords = ["klima arızası", "klima arizasi", "asansör düğmesi", "asansor dugmesi", "turnike arızası", "anons sistemi"];
+        if (mockKeywords.some(kw => subject.includes(kw) || msg.includes(kw))) return false;
+
+        const id = (item.id || "").toUpperCase();
+        if (id.startsWith("SK-98")) return false;
+
+        return true;
+    });
+}
+
+function scrapeComplaintsFromDOM() {
+    // Option B: Check Global Window Objects
+    const globalData = window.sikayetData || window.complaintList || window.şikayetData;
+    if (globalData && Array.isArray(globalData)) {
+        console.log('[İZBAN-DEBUG] Global objeden bulunan şikayetler:', globalData);
+        const mapped = globalData.map((item, index) => {
+            const rawStatus = item.durum || item.status || "";
+            const status = (rawStatus.includes("cevap") || rawStatus.includes("tamam") || rawStatus.includes("ok")) ? "Cevaplandı" : "Cevap Bekliyor";
+            return {
+                id: item.id || item.sikayet_id || `SK-GB${100 + index}`,
+                tarih: item.tarih || item.date || new Date().toLocaleString('tr-TR'),
+                musteri_adi: item.musteri_adi || item.passenger || item.ad_soyad || "Bilinmeyen Yolcu",
+                konu: item.konu || item.subject || "Konu Belirtilmemiş",
+                mesaj: item.mesaj || item.body || item.subject || "Mesaj yok",
+                istasyon: item.istasyon || item.station || "Tüm İstasyonlar",
+                status: status,
+                date: item.tarih || item.date,
+                passenger: item.musteri_adi || item.passenger || item.ad_soyad || "Bilinmeyen Yolcu",
+                subject: item.konu || item.subject || "Konu Belirtilmemiş",
+                body: item.mesaj || item.body || item.subject || "Mesaj yok",
+                station: item.istasyon || item.station || "Tüm İstasyonlar"
+            };
+        });
+        return sanitizeComplaints(mapped);
+    }
+
+    // Option A: Scraping DOM elements
+    const tableSelectors = ['.complaint-table', '#tblSikayetler', '.x_content table', '.table', '.grid-view', 'table'];
+    let targetTable = null;
+    for (const selector of tableSelectors) {
+        const found = document.querySelector(selector);
+        if (found) {
+            const headers = Array.from(found.querySelectorAll('th')).map(th => th.textContent.toLowerCase());
+            const looksLikeComplaint = headers.some(h => h.includes('şikayet') || h.includes('şikâyet') || h.includes('yolcu') || h.includes('konu') || h.includes('cevap') || h.includes('durum'));
+            if (looksLikeComplaint) {
+                const rows = found.querySelectorAll('tr');
+                if (rows && rows.length > 1) {
+                    targetTable = found;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (targetTable) {
+        const parsed = parseComplaintsFromTable(targetTable);
+        const sanitized = sanitizeComplaints(parsed);
+        console.log('[İZBAN-DEBUG] DOM Table bulundu ve kazındı (Sanitized):', sanitized);
+        return sanitized;
+    }
+
+    return [];
 }
 
 async function fetchLiveComplaints() {
     const urlLower = window.location.href.toLowerCase();
     let queryParams = new URLSearchParams(window.location.search);
-    const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler';
+    const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler' || urlLower.includes('sikayetleri') || urlLower.includes('complaints');
 
     if (isSikayetPage) {
-        const table = document.querySelector('.table, .grid-view, table');
-        if (table) {
-            const parsed = parseComplaintsFromTable(table);
-            if (parsed && parsed.length > 0) {
-                localStorage.setItem('izban_complaints_data', JSON.stringify(parsed));
-                return parsed;
-            }
-        }
-    }
-
-    const findComplaintUrl = () => {
-        const links = Array.from(document.querySelectorAll('.nav.side-menu a, .child_menu a'));
-        const found = links.find(a => {
-            const text = a.textContent.toLowerCase();
-            const href = (a.getAttribute('href') || '').toLowerCase();
-            return text.includes('şikayet') || text.includes('şikâyet') || href.includes('sikayet') || href.includes('complaint');
-        });
-        return found ? found.getAttribute('href') : null;
-    };
-    const targetUrl = findComplaintUrl() || 'index.php?page=sikayetler';
-
-    try {
-        const response = await fetch(targetUrl);
-        if (response.ok) {
-            const html = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const table = doc.querySelector('.table, .grid-view, table');
-            if (table) {
-                const parsed = parseComplaintsFromTable(table);
-                if (parsed && parsed.length > 0) {
-                    localStorage.setItem('izban_complaints_data', JSON.stringify(parsed));
-                    return parsed;
-                }
-            }
-        }
-    } catch (e) {
-        console.error('Error fetching live complaints:', e);
+        const parsed = scrapeComplaintsFromDOM();
+        localStorage.setItem('izban_complaints_loaded', 'true');
+        localStorage.setItem('izban_complaints_data', JSON.stringify(parsed));
+        return parsed;
     }
 
     const saved = localStorage.getItem('izban_complaints_data');
     if (saved) {
-        return JSON.parse(saved);
+        try {
+            const parsed = JSON.parse(saved);
+            return sanitizeComplaints(parsed);
+        } catch (e) {
+            console.error('Error parsing saved complaints:', e);
+        }
     }
 
-    const defaultComplaints = [
-        { id: "SK-9821B", date: "25.07.2026 08:30", passenger: "Ahmet Yılmaz", subject: "Klima arızası ve vagon sıcaklığı", station: "Alsancak Metro", status: "Cevap Bekliyor" },
-        { id: "SK-9820B", date: "25.07.2026 07:15", passenger: "Elif Demir", subject: "Valiz geçiş turnikesi çalışmaması", station: "Halkapınar Aktarma", status: "Cevaplandı", reply: "Turnike arızası teknik ekibimize bildirilmiş olup, saat 09:12 itibariyle giderilmiştir." },
-        { id: "SK-9819B", date: "24.07.2026 19:40", passenger: "Mehmet Kaya", subject: "Asansör düğmelerinin kırık olması", station: "Menemen İstasyonu", status: "Cevap Bekliyor" },
-        { id: "SK-9818B", date: "24.07.2026 18:25", passenger: "Selin Aksoy", subject: "Sefer iptali anonsunun gecikmesi", station: "Karşıyaka Gar", status: "Cevaplandı", reply: "Gecikme anons sistemi kontrol edilmiştir. Geri bildiriminiz için teşekkür ederiz." },
-        { id: "SK-9817B", date: "24.07.2026 14:10", passenger: "Can Yıldız", subject: "Güvenlik personelinin ilgisizliği", station: "Şirinyer Turnikeler", status: "Cevap Bekliyor" }
-    ];
-    localStorage.setItem('izban_complaints_data', JSON.stringify(defaultComplaints));
-    return defaultComplaints;
+    const isLoaded = localStorage.getItem('izban_complaints_loaded') === 'true';
+    if (!isLoaded) {
+        return null; // indicator that page has never been scraped/loaded yet
+    }
+
+    return [];
 }
 
 function formatRelativeDate(dateString) {
@@ -1453,31 +1518,6 @@ function formatRelativeDate(dateString) {
         return `${day}.${month}.${year}, ${hours}:${minutes}`;
     }
 }
-
-function renderComplaintList(container, pendingComplaints) {
-    const sorted = [...pendingComplaints].sort((a, b) => {
-        return parseTurkishDateTime(b.date) - parseTurkishDateTime(a.date);
-    });
-
-    let listHtml = '';
-    if (sorted.length === 0) {
-        listHtml = '<div class="izban-modal-no-data" style="text-align: center; padding: 20px; color: #64748b; font-weight: 600;">Cevap bekleyen şikayet bulunmamaktadır.</div>';
-    } else {
-        sorted.forEach(item => {
-            listHtml += `
-                <div class="izban-modal-list-item">
-                    <div class="item-header">
-                        <strong>${item.passenger}</strong> - ${item.station}
-                        <span class="item-date">${formatRelativeDate(item.date)}</span>
-                    </div>
-                    <div class="item-body">${item.body || item.subject || ''}</div>
-                </div>
-            `;
-        });
-    }
-    container.innerHTML = listHtml;
-}
-
 function updateDashboardComplaintBadge(complaints) {
     const tile = document.querySelector('.izban-complaint-tile');
     if (tile) {
@@ -1489,35 +1529,98 @@ function updateDashboardComplaintBadge(complaints) {
     }
 }
 
-async function refreshComplaintPanel() {
-    const complaints = await fetchLiveComplaints();
-    updateDashboardComplaintBadge(complaints);
+let liveComplaints = null;
 
+function renderComplaintModal() {
     const modal = document.getElementById('izban-complaints-modal');
-    if (modal) {
-        const totalCount = window.izbanTotalComplaintsCount || 5988;
-        const pendingComplaints = complaints.filter(c => c.status === 'Cevap Bekliyor');
-        const pendingCount = pendingComplaints.length;
-        const answeredCount = totalCount - pendingCount;
+    if (!modal) return;
 
-        const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const modalContainer = modal.querySelector('.sikayet-list-container');
+    if (!modalContainer) return;
 
-        const statAnsweredNum = modal.querySelector('.izban-modal-stat-card.answered .stat-num');
-        const statPendingNum = modal.querySelector('.izban-modal-stat-card.pending .stat-num');
-        if (statAnsweredNum) statAnsweredNum.textContent = formatNumber(answeredCount);
-        if (statPendingNum) statPendingNum.textContent = formatNumber(pendingCount);
-
-        const listTitle = modal.querySelector('.izban-modal-body h4');
-        if (listTitle) listTitle.textContent = `Cevap Bekleyen Şikayetler (${pendingCount})`;
-
-        const container = modal.querySelector('.sikayet-list-container');
-        if (container) {
-            renderComplaintList(container, pendingComplaints);
-        }
+    // Eğer liveComplaints boşsa veya veriler çekilemediyse EKRANA KART BASMA!
+    if (!liveComplaints || liveComplaints.length === 0) {
+        modalContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">⚠️ Canlı şikayet verileri yüklenemedi / Bekleyen aktif şikayet yok.</div>';
+        return;
     }
+
+    const pendingComplaints = liveComplaints.filter(c => c.status === 'Cevap Bekliyor');
+    const pendingCount = pendingComplaints.length;
+    const totalCount = window.izbanTotalComplaintsCount || 5988;
+    const answeredCount = totalCount - pendingCount;
+
+    const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    const statAnsweredNum = modal.querySelector('.izban-modal-stat-card.answered .stat-num');
+    const statPendingNum = modal.querySelector('.izban-modal-stat-card.pending .stat-num');
+    if (statAnsweredNum) statAnsweredNum.textContent = formatNumber(answeredCount);
+    if (statPendingNum) statPendingNum.textContent = formatNumber(pendingCount);
+
+    const listTitle = modal.querySelector('.izban-modal-body h4');
+    if (listTitle) listTitle.textContent = `Cevap Bekleyen Şikayetler (${pendingCount})`;
+
+    const sorted = [...pendingComplaints].sort((a, b) => {
+        const dateA = a.tarih || a.date;
+        const dateB = b.tarih || b.date;
+        return parseTurkishDateTime(dateB) - parseTurkishDateTime(dateA);
+    });
+
+    let listHtml = '';
+    if (sorted.length === 0) {
+        listHtml = '<div style="padding:20px; text-align:center; color:#94a3b8;">⚠️ Canlı şikayet verileri yüklenemedi / Bekleyen aktif şikayet yok.</div>';
+    } else {
+        listHtml = sorted.map(item => {
+            const passenger = item.musteri_adi || item.passenger || 'Bilinmeyen Yolcu';
+            const station = item.istasyon || item.station || 'Tüm İstasyonlar';
+            const date = item.tarih || item.date || '';
+            const message = item.mesaj || item.body || item.subject || '';
+
+            return `
+                <div class="izban-modal-list-item">
+                    <div class="item-header">
+                        <strong>${passenger}</strong> - ${station}
+                        <span class="item-date">${formatRelativeDate(date)}</span>
+                    </div>
+                    <div class="item-body">${message}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    modalContainer.innerHTML = listHtml;
 }
 
-async function showModernComplaintsModal() {
+async function refreshComplaintPanel() {
+    const complaints = await fetchLiveComplaints();
+
+    // Set global liveComplaints array
+    liveComplaints = complaints;
+
+    if (liveComplaints !== null) {
+        updateDashboardComplaintBadge(liveComplaints);
+        checkAndLogRealtimeUpdates(liveComplaints);
+
+        const pendingCount = liveComplaints.filter(c => c.status === 'Cevap Bekliyor').length;
+        let dashboardCount = null;
+        const complaintTile = document.querySelector('.izban-complaint-tile');
+        if (complaintTile) {
+            const bottomTextEl = complaintTile.querySelector('.count_bottom');
+            if (bottomTextEl) {
+                const text = bottomTextEl.textContent || "";
+                const match = text.match(/(\d+)/);
+                if (match) {
+                    dashboardCount = parseInt(match[1], 10);
+                }
+            }
+        }
+        if (dashboardCount !== null && pendingCount !== dashboardCount) {
+            console.warn(`[İZBAN-DEBUG] Uyarı: Sunucudan gelen bekleyen şikayet sayısı (${pendingCount}) ile kutudaki sayı (${dashboardCount}) eşleşmiyor!`);
+        }
+    }
+
+    renderComplaintModal();
+}
+
+async function openModal() {
     if (document.getElementById('izban-complaints-modal')) return;
 
     const modal = document.createElement('div');
@@ -1562,6 +1665,10 @@ async function showModernComplaintsModal() {
     await refreshComplaintPanel();
 }
 
+async function showModernComplaintsModal() {
+    await openModal();
+}
+
 function initializeSikayetlerPage() {
     const urlLower = window.location.href.toLowerCase();
     let queryParams;
@@ -1582,18 +1689,9 @@ function initializeSikayetlerPage() {
     // Check if we already injected our modern panel
     if (document.getElementById('izban-modern-complaints-container')) return;
 
-    // Core mock database
-    const defaultComplaints = [
-        { id: "SK-9821B", date: "23.07.2026 08:30", passenger: "Ahmet Yılmaz", subject: "Klima arızası ve vagon sıcaklığı", station: "Alsancak Metro", status: "Cevap Bekliyor" },
-        { id: "SK-9820B", date: "23.07.2026 07:15", passenger: "Elif Demir", subject: "Valiz geçiş turnikesi çalışmaması", station: "Halkapınar Aktarma", status: "Cevaplandı", reply: "Turnike arızası teknik ekibimize bildirilmiş olup, saat 09:12 itibariyle giderilmiştir." },
-        { id: "SK-9819B", date: "22.07.2026 19:40", passenger: "Mehmet Kaya", subject: "Asansör düğmelerinin kırık olması", station: "Menemen İstasyonu", status: "Cevap Bekliyor" },
-        { id: "SK-9818B", date: "22.07.2026 18:25", passenger: "Selin Aksoy", subject: "Sefer iptali anonsunun gecikmesi", station: "Karşıyaka Gar", status: "Cevaplandı", reply: "Gecikme anons sistemi kontrol edilmiştir. Geri bildiriminiz için teşekkür ederiz." },
-        { id: "SK-9817B", date: "22.07.2026 14:10", passenger: "Can Yıldız", subject: "Güvenlik personelinin ilgisizliği", station: "Şirinyer Turnikeler", status: "Cevap Bekliyor" }
-    ];
-
     // State management
     const saved = localStorage.getItem('izban_complaints_data');
-    let complaints = saved ? JSON.parse(saved) : defaultComplaints;
+    let complaints = saved ? JSON.parse(saved) : [];
 
     // Try to parse existing complaints tables if present
     const existingTable = document.querySelector('.table, .grid-view, table');
@@ -3567,7 +3665,18 @@ function initKapaliIsEmriFilter() {
     }
 }
 
-function startComplaintPollingLoop() {
+let lastComplaintsString = '';
+function checkAndLogRealtimeUpdates(newComplaints) {
+    if (!newComplaints) return;
+    const newString = JSON.stringify(newComplaints);
+    if (newString !== lastComplaintsString) {
+        lastComplaintsString = newString;
+        console.log(`[İZBAN REALTIME] ${newComplaints.length} adet canlı şikayet güncellendi.`);
+    }
+}
+
+function initializeRealTimeComplaintsTracker() {
+    // 1. Polling sequence (30 seconds)
     if (window.complaintIntervalId) {
         clearInterval(window.complaintIntervalId);
     }
@@ -3575,12 +3684,51 @@ function startComplaintPollingLoop() {
         const complaints = await fetchLiveComplaints();
         updateDashboardComplaintBadge(complaints);
 
-        // Dynamic refresh panel if modal is currently open in the DOM
         const modal = document.getElementById('izban-complaints-modal');
         if (modal) {
             await refreshComplaintPanel();
         }
-    }, 5000);
+    }, 30000);
+
+    // 2. MutationObserver
+    const urlLower = window.location.href.toLowerCase();
+    let queryParams = new URLSearchParams(window.location.search);
+    const isSikayetPage = urlLower.includes('sikayet') || urlLower.includes('complaint') || queryParams.get('page') === 'sikayetler' || urlLower.includes('sikayetleri') || urlLower.includes('complaints');
+
+    if (isSikayetPage) {
+        const targetNode = document.querySelector('.right_col') || document.body;
+        if (targetNode && !window.izbanComplaintsObserverAttached) {
+            window.izbanComplaintsObserverAttached = true;
+
+            let debounceTimeout;
+            const observer = new MutationObserver(() => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(async () => {
+                    const parsed = scrapeComplaintsFromDOM();
+                    if (parsed && parsed.length > 0) {
+                        const savedStr = localStorage.getItem('izban_complaints_data');
+                        const parsedStr = JSON.stringify(parsed);
+                        if (savedStr !== parsedStr) {
+                            localStorage.setItem('izban_complaints_data', parsedStr);
+                            localStorage.setItem('izban_complaints_data_loaded', 'true');
+                            await refreshComplaintPanel();
+                        }
+                    }
+                }, 500);
+            });
+
+            observer.observe(targetNode, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+            console.log('[İZBAN-DEBUG] Real-time MutationObserver initialized on complaints page.');
+        }
+    }
+}
+
+function startComplaintPollingLoop() {
+    initializeRealTimeComplaintsTracker();
 }
 
 window.addEventListener('storage', (e) => {
@@ -3589,7 +3737,480 @@ window.addEventListener('storage', (e) => {
     }
 });
 
-// Sayfa yüklendiğinde başlat
+function copySvgStyles(src, dest) {
+    try {
+        const srcStyles = window.getComputedStyle(src);
+        const styleKeys = [
+            'fill', 'stroke', 'stroke-width', 'stroke-opacity', 'fill-opacity',
+            'opacity', 'font-family', 'font-size', 'font-weight', 'color',
+            'display', 'visibility', 'transform', 'text-anchor', 'stroke-dasharray'
+        ];
+        styleKeys.forEach(key => {
+            const val = srcStyles.getPropertyValue(key);
+            if (val) dest.style.setProperty(key, val);
+        });
+    } catch (e) {
+        // Safe fallback
+    }
+
+    const srcChildren = Array.from(src.children);
+    const destChildren = Array.from(dest.children);
+    srcChildren.forEach((child, i) => {
+        if (destChildren[i]) {
+            copySvgStyles(child, destChildren[i]);
+        }
+    });
+}
+
+function convertSvgToPng(svgElement, callback) {
+    try {
+        const serializer = new XMLSerializer();
+        const svgClone = svgElement.cloneNode(true);
+
+        // Bake computed CSS styles recursively into cloned nodes
+        copySvgStyles(svgElement, svgClone);
+
+        const rect = svgElement.getBoundingClientRect();
+        const width = rect.width || svgElement.clientWidth || 800;
+        const height = rect.height || svgElement.clientHeight || 450;
+
+        svgClone.setAttribute('width', width);
+        svgClone.setAttribute('height', height);
+
+        let svgString = serializer.serializeToString(svgClone);
+        if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+            svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+
+        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+
+        const img = new Image();
+        img.onload = function () {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const pngBase64 = canvas.toDataURL('image/png');
+                callback(null, pngBase64);
+            } catch (err) {
+                callback(err);
+            }
+        };
+        img.onerror = function () {
+            callback(new Error('Image failed to load'));
+        };
+        img.src = dataUrl;
+    } catch (e) {
+        callback(e);
+    }
+}
+
+function exportGraphToPDF(panelElement, graphTitle) {
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+
+    const printResult = (imgDataUrl) => {
+        const printableHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${graphTitle}</title>
+            <style>
+                body {
+                    font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                    color: #333;
+                    background: #fff;
+                    margin: 20px;
+                    padding: 0;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #10b981;
+                    padding-bottom: 10px;
+                }
+                .header h1 {
+                    margin: 0;
+                    font-size: 24px;
+                    color: #0f172a;
+                }
+                .header .date {
+                    font-size: 14px;
+                    color: #64748b;
+                    margin-top: 5px;
+                }
+                .chart-container {
+                    text-align: center;
+                    margin-top: 20px;
+                }
+                .chart-image {
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #cbd5e1;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                    border-radius: 6px;
+                }
+                @media print {
+                    body { margin: 0; }
+                    .chart-image { box-shadow: none; border: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>${graphTitle}</h1>
+                <div class="date">Tarih: ${dateStr}</div>
+            </div>
+            <div class="chart-container">
+                <img class="chart-image" src="${imgDataUrl}" alt="${graphTitle}">
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+        `;
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printableHtml);
+            printWindow.document.close();
+        } else {
+            alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+        }
+    };
+
+    const fallbackRasterize = () => {
+        const svg = panelElement.querySelector('svg');
+        const canvas = panelElement.querySelector('canvas');
+        if (svg) {
+            convertSvgToPng(svg, (err, dataUrl) => {
+                if (err) {
+                    console.error('Error rasterizing SVG:', err);
+                    if (canvas) {
+                        printCanvas(canvas);
+                    } else {
+                        alert('Grafik resmi oluşturulamadı.');
+                    }
+                } else {
+                    printResult(dataUrl);
+                }
+            });
+        } else if (canvas) {
+            printCanvas(canvas);
+        } else {
+            alert('Bu panelde yazdırılabilir grafik bulunamadı.');
+        }
+    };
+
+    function printCanvas(c) {
+        try {
+            const whiteCanvas = document.createElement('canvas');
+            whiteCanvas.width = c.width;
+            whiteCanvas.height = c.height;
+            const wCtx = whiteCanvas.getContext('2d');
+            wCtx.fillStyle = '#ffffff';
+            wCtx.fillRect(0, 0, c.width, c.height);
+            wCtx.drawImage(c, 0, 0);
+            printResult(whiteCanvas.toDataURL('image/png'));
+        } catch (e) {
+            console.error('Error reading canvas:', e);
+            alert('Grafik okunamadı.');
+        }
+    }
+
+    if (typeof html2canvas !== 'undefined') {
+        const chartContainer = panelElement.querySelector('.x_content') || panelElement;
+        html2canvas(chartContainer, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 2,
+            backgroundColor: '#ffffff',
+            ignoreElements: (el) => {
+                return el.classList && (
+                    el.classList.contains('graph-pdf-btn') ||
+                    el.classList.contains('table-pdf-btn') ||
+                    el.tagName === 'BUTTON'
+                );
+            }
+        }).then(canvas => {
+            printResult(canvas.toDataURL('image/png'));
+        }).catch(err => {
+            console.error('html2canvas failed:', err);
+            fallbackRasterize();
+        });
+    } else {
+        fallbackRasterize();
+    }
+}
+
+function exportWorkOrderReportToPDF(panelElement) {
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+
+    const subPanels = Array.from(panelElement.querySelectorAll('.x_panel, .x_content > div, .col-md-4, .col-sm-4'));
+    const tables = Array.from(panelElement.querySelectorAll('table'));
+
+    const getVisibleTableHtml = (table, titleLabel) => {
+        if (!table) return '';
+        const headers = Array.from(table.querySelectorAll('thead th, tr:first-child th'));
+        const rows = Array.from(table.querySelectorAll('tbody tr, tr')).filter(tr => {
+            if (tr.querySelector('th')) return false;
+            return tr.style.display !== 'none' && window.getComputedStyle(tr).display !== 'none';
+        });
+
+        let headerRow = '';
+        if (headers.length > 0) {
+            headerRow = '<tr>' + headers.map(th => `<th>${th.textContent.trim()}</th>`).join('') + '</tr>';
+        } else {
+            headerRow = '<tr><th>Kategori / İstasyon Adı</th><th>Sayısı</th></tr>';
+        }
+
+        const bodyRows = rows.map(tr => {
+            const cells = Array.from(tr.querySelectorAll('td'));
+            if (cells.length >= 2) {
+                return `<tr><td>${cells[0].textContent.trim()}</td><td>${cells[1].textContent.trim()}</td></tr>`;
+            }
+            return '';
+        }).filter(r => r !== '').join('');
+
+        return `
+            <div style="flex: 1; min-width: 250px; margin-bottom: 20px;">
+                <h3 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; margin-top: 10px;">${titleLabel}</h3>
+                <table>
+                    <thead>
+                        ${headerRow}
+                    </thead>
+                    <tbody>
+                        ${bodyRows || '<tr><td colspan="2">Aktif veri bulunamadı</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    };
+
+    let table1 = null;
+    let table2 = null;
+    let table3 = null;
+
+    let title1 = 'Üst Kategori Raporu';
+    let title2 = 'Kategori Raporu';
+    let title3 = 'İstasyon Raporu';
+
+    subPanels.forEach(sub => {
+        const text = (sub.textContent || '').toLowerCase();
+        const table = sub.querySelector('table');
+        if (!table) return;
+
+        if (text.includes('ust kategori') || text.includes('üst kategori')) {
+            table1 = table;
+            const totEl = sub.querySelector('h2, h3, h4, strong, p');
+            title1 = totEl ? totEl.textContent.trim() : 'Üst Kategori Raporu';
+        } else if (text.includes('toplam kategori sayısı') || (text.includes('toplam') && text.includes('kategori'))) {
+            table2 = table;
+            const totEl = sub.querySelector('h2, h3, h4, strong, p');
+            title2 = totEl ? totEl.textContent.trim() : 'Kategori Raporu';
+        } else if (text.includes('toplam istasyon sayısı') || text.includes('istasyon')) {
+            table3 = table;
+            const totEl = sub.querySelector('h2, h3, h4, strong, p');
+            title3 = totEl ? totEl.textContent.trim() : 'İstasyon Raporu';
+        }
+    });
+
+    if (!table1 && tables[0]) table1 = tables[0];
+    if (!table2 && tables[1]) table2 = tables[1];
+    if (!table3 && tables[2]) table3 = tables[2];
+
+    const t1Html = getVisibleTableHtml(table1, title1);
+    const t2Html = getVisibleTableHtml(table2, title2);
+    const t3Html = getVisibleTableHtml(table3, title3);
+
+    const printableHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>İZBAN - Sabit Tesisler Açık İş Emri Raporu</title>
+        <style>
+            body {
+                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                color: #333;
+                background: #fff;
+                margin: 20px;
+                padding: 0;
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 25px;
+                border-bottom: 2px solid #10b981;
+                padding-bottom: 10px;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 24px;
+                color: #0f172a;
+            }
+            .header .date {
+                font-size: 14px;
+                color: #64748b;
+                margin-top: 5px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                background-color: #ffffff;
+                font-size: 12px;
+            }
+            th, td {
+                border: 1px solid #cbd5e1;
+                padding: 8px 10px;
+                text-align: left;
+            }
+            th {
+                background-color: #f1f5f9;
+                color: #0f172a;
+                font-weight: 700;
+            }
+            tr:nth-child(even) {
+                background-color: #f8fafc;
+            }
+            .container {
+                display: flex;
+                gap: 20px;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            @media print {
+                body { margin: 0; }
+                .container { display: flex; flex-direction: row; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>İZBAN - Sabit Tesisler Açık İş Emri Raporu</h1>
+            <div class="date">Tarih: ${dateStr}</div>
+        </div>
+        <div class="container">
+            ${t1Html}
+            ${t2Html}
+            ${t3Html}
+        </div>
+        <script>
+            window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(printableHtml);
+        printWindow.document.close();
+    } else {
+        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+    }
+}
+
+function injectNewGraphAndTableButtons() {
+    const headers = document.querySelectorAll('h2, h3, h4, .panel-title, .x_title h2');
+    headers.forEach(header => {
+        const text = (header.textContent || '').trim();
+        const textLower = text.toLowerCase();
+
+        if (textLower.includes('son 3 yıl günlük karşılaştırma') && !header.querySelector('.yolcu-compare-pdf-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'graph-pdf-btn yolcu-compare-pdf-btn';
+            btn.innerHTML = '📄 Bu Grafiği PDF İndir';
+            header.appendChild(btn);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = header.closest('.x_panel') || header.parentElement;
+                exportGraphToPDF(panel, 'Son 3 Yıl Günlük Karşılaştırma Raporu');
+            });
+        }
+
+        if (textLower.includes('yıllara göre değişim yüzdesi') && !header.querySelector('.yolcu-change-pdf-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'graph-pdf-btn yolcu-change-pdf-btn';
+            btn.innerHTML = '📄 Bu Grafiği PDF İndir';
+            header.appendChild(btn);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = header.closest('.x_panel') || header.parentElement;
+                exportGraphToPDF(panel, 'Yıllara Göre Değişim Yüzdesi Raporu');
+            });
+        }
+
+        if (textLower.includes('binalar ve tesislerin elektrik tüketim') && !header.querySelector('.energy-binalar-pdf-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'graph-pdf-btn energy-binalar-pdf-btn';
+            btn.innerHTML = '📄 Grafiği PDF İndir';
+            header.appendChild(btn);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = header.closest('.x_panel') || header.parentElement;
+                exportGraphToPDF(panel, 'Binalar ve Tesislerin Elektrik Tüketim Grafiği (kWh)');
+            });
+        }
+
+        if (textLower.includes('kataner elektrik tüketim') && !header.querySelector('.energy-kataner-pdf-btn')) {
+            const btn = document.createElement('button');
+            btn.className = 'graph-pdf-btn energy-kataner-pdf-btn';
+            btn.innerHTML = '📄 Grafiği PDF İndir';
+            header.appendChild(btn);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = header.closest('.x_panel') || header.parentElement;
+                exportGraphToPDF(panel, 'Kataner Elektrik Tüketim Grafiği (kWh)');
+            });
+        }
+
+        if (textLower.includes('açık iş emri sayı raporları') && !header.querySelector('#sabit-tesisler-pdf-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'sabit-tesisler-pdf-btn';
+            btn.className = 'table-pdf-btn';
+            btn.innerHTML = '📄 Sabit Tesisler Raporunu PDF İndir';
+            header.appendChild(btn);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = header.closest('.x_panel') || header.parentElement;
+                exportWorkOrderReportToPDF(panel);
+            });
+        }
+    });
+}
+
+function startDynamicButtonsPollingLoop() {
+    if (window.dynamicButtonsIntervalId) {
+        clearInterval(window.dynamicButtonsIntervalId);
+    }
+    window.dynamicButtonsIntervalId = setInterval(injectNewGraphAndTableButtons, 1000);
+}
+
+// Start polling sequence on file load
+startDynamicButtonsPollingLoop();
+
 initializeDarkMode();
 startYolcuPollingLoop();
 startAcikIsEmriPollingLoop();
