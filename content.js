@@ -490,6 +490,9 @@ function handlePageLayout() {
     // Karanlık mod eklenti butonlarını yükle
     injectDarkModeToggles();
 
+    // Sabit Tesisler PDF Export butonunu yükle
+    injectSabitTesislerBtn();
+
     // Arama barlarını yükle
     initializeSidebarSearch();
     initializeContactsSearch();
@@ -886,6 +889,7 @@ function startObserver() {
     observer = new MutationObserver(() => {
         stopObserver();
         handleNavigation();
+        injectSabitTesislerBtn();
         startObserver();
     });
     observer.observe(document.body, {
@@ -1901,6 +1905,84 @@ function initializeSikayetlerPage() {
     });
 })();
 
+async function downloadPDFReport(targetElement, fileName = 'IZBAN_Raporu.pdf') {
+    const originalPdfId = targetElement.dataset.pdfId;
+    const tempId = 'pdf-export-' + Math.random().toString(36).substr(2, 9);
+    targetElement.dataset.pdfId = tempId;
+
+    document.body.appendChild(targetElement);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    try {
+        const canvas = await html2canvas(targetElement, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            logging: false,
+            onclone: (clonedDoc) => {
+                const clonedTarget = clonedDoc.querySelector(`[data-pdf-id="${tempId}"]`) || clonedDoc.body;
+                clonedTarget.style.backgroundColor = '#ffffff';
+                clonedTarget.style.color = '#000000';
+
+                const allTexts = clonedTarget.querySelectorAll('text, tspan, div, span, p, tr, td, th, h1, h2, h3, label, .flot-tick-label, .amcharts-axis-label, .legendLabel');
+                allTexts.forEach(el => {
+                    el.style.setProperty('fill', '#000000', 'important');
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
+                    el.style.setProperty('font-weight', '700', 'important');
+                });
+
+                const lines = clonedTarget.querySelectorAll('line, path');
+                lines.forEach(line => {
+                    const currentStroke = line.getAttribute('stroke');
+                    if (currentStroke && currentStroke !== 'none' && currentStroke !== 'transparent') {
+                        line.style.setProperty('stroke-opacity', '0.8', 'important');
+                    }
+                });
+
+                clonedDoc.querySelectorAll('.dark-theme, .theme-dark, .dark-mode, .dark').forEach(el => {
+                    el.classList.remove('dark-theme', 'theme-dark', 'dark-mode', 'dark');
+                });
+            }
+        });
+
+        if (originalPdfId === undefined) {
+            delete targetElement.dataset.pdfId;
+        } else {
+            targetElement.dataset.pdfId = originalPdfId;
+        }
+
+        document.body.removeChild(targetElement);
+
+        const imgData = canvas.toDataURL('image/png');
+
+        if (window.jspdf && window.jspdf.jsPDF) {
+            const { jsPDF } = window.jspdf;
+            const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
+            const pdf = new jsPDF(orientation, 'mm', 'a4');
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 5, pdfWidth, pdfHeight);
+            pdf.save(fileName);
+        } else {
+            const link = document.createElement('a');
+            link.download = fileName.replace('.pdf', '.png');
+            link.href = imgData;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch (e) {
+        console.error('Error generating PDF:', e);
+        if (targetElement.parentElement) {
+            document.body.removeChild(targetElement);
+        }
+        alert('PDF Raporu oluşturulamadı.');
+    }
+}
+
 function exportTableToPDF(tableElement, pageTitle) {
     if (!tableElement) return;
 
@@ -1908,7 +1990,6 @@ function exportTableToPDF(tableElement, pageTitle) {
         return str.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
     };
 
-    // Grab header row
     const headerTr = tableElement.querySelector('thead tr') || tableElement.querySelector('tbody tr:first-child');
     if (!headerTr) return;
 
@@ -1917,7 +1998,6 @@ function exportTableToPDF(tableElement, pageTitle) {
     const cleanHeaders = [];
 
     ths.forEach((th, idx) => {
-        // Check if header cell itself is hidden (e.g. month column filtering)
         if (th.style.display === 'none') {
             excludeIndices.push(idx);
             return;
@@ -1930,15 +2010,11 @@ function exportTableToPDF(tableElement, pageTitle) {
         cleanHeaders.push(th.textContent.trim());
     });
 
-    // Grab all rows
     const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
     let rowHtml = "";
     rows.forEach(tr => {
-        // Skip hidden rows
         if (tr.style.display === 'none') return;
-        // Skip header if it is in tbody
         if (!tableElement.querySelector('thead') && tr === headerTr) return;
-        // Skip spacer rows / colspan rows
         if (tr.children.length < 3) return;
 
         const cells = Array.from(tr.querySelectorAll('td, th'));
@@ -1951,92 +2027,42 @@ function exportTableToPDF(tableElement, pageTitle) {
     });
 
     const currentDateString = new Date().toLocaleDateString('tr-TR');
-    const printableHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>${pageTitle}</title>
-        <style>
-            body {
-                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                color: #333;
-                padding: 20px;
-                background-color: #fff;
-            }
-            .header-container {
-                text-align: center;
-                border-bottom: 2px solid #10b981;
-                padding-bottom: 12px;
-                margin-bottom: 20px;
-            }
-            h1 {
-                font-size: 20px;
-                color: #0f172a;
-                margin: 0 0 5px 0;
-            }
-            .date-subtitle {
-                font-size: 12px;
-                color: #64748b;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 11px;
-                margin-top: 15px;
-            }
-            th, td {
-                border: 1px solid #cbd5e1;
-                padding: 8px 10px;
-                text-align: left;
-            }
-            th {
-                background-color: #f8fafc;
-                color: #475569;
-                font-weight: 700;
-            }
-            tr:nth-child(even) {
-                background-color: #f8fafc;
-            }
-            @media print {
-                body { padding: 0; }
-                .header-container { border-bottom-color: #000; }
-                @page { margin: 1.5cm; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header-container">
-            <h1>${pageTitle}</h1>
-            <div class="date-subtitle">Rapor Tarihi: ${currentDateString}</div>
+
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-table-temp-container';
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '800px';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.padding = '30px';
+    tempContainer.style.boxSizing = 'border-box';
+
+    tempContainer.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #10b981; padding-bottom: 12px; margin-bottom: 20px; font-family: sans-serif;">
+            <h1 style="font-size: 20px; color: #0f172a; margin: 0 0 5px 0;">${pageTitle}</h1>
+            <div style="font-size: 12px; color: #64748b;">Rapor Tarihi: ${currentDateString}</div>
         </div>
-        <table>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px; font-family: sans-serif; color: #000000;">
             <thead>
-                <tr>
-                    ${cleanHeaders.map(h => `<th>${h}</th>`).join('')}
+                <tr style="background-color: #f8fafc;">
+                    ${cleanHeaders.map(h => `<th style="border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; font-weight: 700; color: #475569;">${h}</th>`).join('')}
                 </tr>
             </thead>
             <tbody>
                 ${rowHtml}
             </tbody>
         </table>
-        <script>
-            window.onload = function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-            };
-        </script>
-    </body>
-    </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(printableHtml);
-        printWindow.document.close();
-    } else {
-        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
-    }
+    tempContainer.querySelectorAll('td').forEach(td => {
+        td.style.border = '1px solid #cbd5e1';
+        td.style.padding = '8px 10px';
+        td.style.textAlign = 'left';
+    });
+
+    const safeTitle = pageTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    downloadPDFReport(tempContainer, `${safeTitle}_Raporu.pdf`);
 }
 
 function exportListCardToPDF(cardElement, cardTitle) {
@@ -2055,7 +2081,7 @@ function exportListCardToPDF(cardElement, cardTitle) {
         .replace(/Ö/g, 'O').replace(/ö/g, 'o')
         .replace(/Ç/g, 'C').replace(/ç/g, 'c')
         .replace(/[^a-zA-Z0-9_]/g, '');
-    const fileName = `IZBAN_${safeTitle}_Raporu_${dateStr}`;
+    const fileName = `IZBAN_${safeTitle}_Raporu_${dateStr}.pdf`;
 
     let contentHtml = '';
 
@@ -2139,40 +2165,40 @@ function exportListCardToPDF(cardElement, cardTitle) {
         const raporluRows = raporluList.map(item => `<tr><td>${item.name}</td><td>${item.dates}</td></tr>`).join('');
 
         contentHtml = `
-            <h3 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; margin-top: 20px;">İzinli Personel(ler)</h3>
+            <h3 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; margin-top: 20px; font-family: sans-serif;">İzinli Personel(ler)</h3>
             ${izinliList.length > 0 ? `
-                <table>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
                     <thead>
-                        <tr>
-                            <th>Personel İsim</th>
-                            <th>İzin Tarih Aralığı</th>
+                        <tr style="background-color: #f8fafc;">
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">Personel İsim</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">İzin Tarih Aralığı</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${izinliRows}
                     </tbody>
                 </table>
-            ` : '<p class="empty-state">Şu anda izinli personel bulunmamaktadır.</p>'}
+            ` : '<p class="empty-state" style="text-align: center; padding: 20px; font-weight: 600; color: #64748b; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-top: 10px;">Şu anda izinli personel bulunmamaktadır.</p>'}
 
-            <h3 style="color: #0f172a; border-bottom: 2px solid #ef4444; padding-bottom: 5px; margin-top: 30px;">Raporlu Personel(ler)</h3>
+            <h3 style="color: #0f172a; border-bottom: 2px solid #ef4444; padding-bottom: 5px; margin-top: 30px; font-family: sans-serif;">Raporlu Personel(ler)</h3>
             ${raporluList.length > 0 ? `
-                <table>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
                     <thead>
-                        <tr>
-                            <th>Personel İsim</th>
-                            <th>Rapor Tarih Aralığı</th>
+                        <tr style="background-color: #f8fafc;">
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">Personel İsim</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">Rapor Tarih Aralığı</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${raporluRows}
                     </tbody>
                 </table>
-            ` : '<p class="empty-state">Şu anda raporlu personel bulunmamaktadır.</p>'}
+            ` : '<p class="empty-state" style="text-align: center; padding: 20px; font-weight: 600; color: #64748b; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-top: 10px;">Şu anda raporlu personel bulunmamaktadır.</p>'}
         `;
     } else if (cardTitle === 'Doğum Günü') {
         const emptyEl = cardElement.querySelector('.izban-birthday-empty');
         if (emptyEl || cardElement.textContent.includes('bulunmamaktadır') || cardElement.textContent.includes('bulunmuyor') || cardElement.textContent.includes('bulunmadı')) {
-            contentHtml = '<div class="empty-state">Bugün doğum günü olan personel bulunmamaktadır.</div>';
+            contentHtml = '<div class="empty-state" style="text-align: center; padding: 20px; font-weight: 600; color: #64748b; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-top: 10px;">Bugün doğum günü olan personel bulunmamaktadır.</div>';
         } else {
             const birthdayList = [];
             const listItems = Array.from(cardElement.querySelectorAll('.msg_list li, ul li, .izban-birthday-list-item, .birthday-item'));
@@ -2220,135 +2246,64 @@ function exportListCardToPDF(cardElement, cardTitle) {
 
             let rowsHtml = birthdayList.map(item => `
                 <tr>
-                    <td style="font-weight: 600; font-size: 13px; color: #1e293b;">${item.name}</td>
-                    <td>${item.birthday || 'Bugün'}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 13px; color: #1e293b;">${item.name}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left;">${item.birthday || 'Bugün'}</td>
                 </tr>
             `).join('');
 
             contentHtml = rowsHtml ? `
-                <table>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
                     <thead>
-                        <tr>
-                            <th>Personel İsim</th>
-                            <th>Doğum Tarihi</th>
+                        <tr style="background-color: #f8fafc;">
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">Personel İsim</th>
+                            <th style="border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-weight: 700; color: #475569;">Doğum Tarihi</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${rowsHtml}
                     </tbody>
                 </table>
-            ` : '<div class="empty-state">Bugün doğum günü olan personel bulunmamaktadır.</div>';
+            ` : '<div class="empty-state" style="text-align: center; padding: 20px; font-weight: 600; color: #64748b; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-top: 10px;">Bugün doğum günü olan personel bulunmamaktadır.</div>';
         }
     }
 
-    const printableHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>İZBAN - ${cardTitle} Raporu</title>
-        <style>
-            body {
-                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                color: #334155;
-                padding: 30px;
-                background-color: #ffffff !important;
-            }
-            .header-container {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 2px solid #10b981;
-                padding-bottom: 15px;
-                margin-bottom: 25px;
-            }
-            .title-section h1 {
-                font-size: 22px;
-                color: #0f172a;
-                margin: 0;
-                font-weight: 700;
-            }
-            .title-section .subtitle {
-                font-size: 13px;
-                color: #64748b;
-                margin-top: 4px;
-            }
-            .date-badge {
-                padding: 6px 12px;
-                background-color: #f1f5f9;
-                border-radius: 6px;
-                font-size: 12px;
-                color: #475569;
-                font-weight: 600;
-                text-align: right;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 12px;
-                margin-top: 15px;
-            }
-            th, td {
-                border: 1px solid #cbd5e1;
-                padding: 10px 12px;
-                text-align: left;
-            }
-            th {
-                background-color: #f8fafc;
-                color: #475569;
-                font-weight: 700;
-            }
-            tr:nth-child(even) {
-                background-color: #f8fafc;
-            }
-            .empty-state {
-                text-align: center;
-                padding: 30px;
-                font-weight: 600;
-                color: #64748b;
-                background-color: #f8fafc;
-                border: 1px dashed #cbd5e1;
-                border-radius: 8px;
-                margin-top: 15px;
-            }
-            @media print {
-                body { padding: 0; }
-                @page { margin: 1.5cm; }
-                table { page-break-inside: avoid; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header-container">
-            <div class="title-section">
-                <h1>İZBAN - ${cardTitle} Raporu</h1>
-                <div class="subtitle">Sistem Raporlama Modülü</div>
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-listcard-temp-container';
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '800px';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.padding = '30px';
+    tempContainer.style.boxSizing = 'border-box';
+
+    tempContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #10b981; padding-bottom: 15px; margin-bottom: 25px; font-family: sans-serif;">
+            <div style="font-family: sans-serif;">
+                <h1 style="font-size: 22px; color: #0f172a; margin: 0; font-weight: 700;">İZBAN - ${cardTitle} Raporu</h1>
+                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Sistem Raporlama Modülü</div>
             </div>
-            <div class="date-badge">
+            <div style="padding: 6px 12px; background-color: #f1f5f9; border-radius: 6px; font-size: 12px; color: #475569; font-weight: 600; text-align: right;">
                 Tarih: ${dateStr}<br/> Saat: ${formattedTime}
             </div>
         </div>
-        <div style="margin-top: 20px;">
+        <div style="margin-top: 20px; font-family: sans-serif; color: #000000;">
             ${contentHtml}
         </div>
-        <script>
-            window.onload = function() {
-                document.title = "${fileName}";
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-            };
-        </script>
-    </body>
-    </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(printableHtml);
-        printWindow.document.close();
-    } else {
-        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
-    }
+    tempContainer.querySelectorAll('th, td').forEach(el => {
+        el.style.border = '1px solid #cbd5e1';
+        el.style.padding = '10px 12px';
+        el.style.textAlign = 'left';
+    });
+    tempContainer.querySelectorAll('th').forEach(el => {
+        el.style.backgroundColor = '#f8fafc';
+        el.style.color = '#475569';
+        el.style.fontWeight = '700';
+    });
+
+    downloadPDFReport(tempContainer, fileName);
 }
 
 function injectListCardPdfButtons() {
@@ -2491,7 +2446,9 @@ function initYolcuSayilariFilter() {
         const clearBtn = toolbar.querySelector('#yolcu-clear-filter');
         const pdfBtn = toolbar.querySelector('#export-pdf-btn');
 
-        pdfBtn.addEventListener('click', () => {
+        pdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const h2 = xContent.closest('.x_panel')?.querySelector('h2, .panel-title') || document.querySelector('h2');
             const title = h2 ? h2.textContent.trim() : 'Yolcu Sayıları Raporu';
             exportTableToPDF(table, title);
@@ -3192,7 +3149,9 @@ function initAcikIsEmriFilter() {
         const clearAllBtn = toolbar.querySelector('#filter-clear-all');
         const pdfBtn = toolbar.querySelector('#export-pdf-btn');
 
-        pdfBtn.addEventListener('click', () => {
+        pdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const h2 = targetHeadingElement || xPanel?.querySelector('h2, .panel-title') || document.querySelector('h2');
             const title = h2 ? h2.textContent.trim() : 'Açık İş Emri Raporu';
             exportTableToPDF(table, title);
@@ -3545,7 +3504,9 @@ function initKapaliIsEmriFilter() {
         const clearAllBtn = toolbar.querySelector('#kapali-filter-clear-all');
         const pdfBtn = toolbar.querySelector('#export-pdf-btn');
 
-        pdfBtn.addEventListener('click', () => {
+        pdfBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const h2 = targetHeadingElement || xPanel?.querySelector('h2, .panel-title') || document.querySelector('h2');
             const title = h2 ? h2.textContent.trim() : 'Kapalı İş Emri Raporu';
             exportTableToPDF(table, title);
@@ -3818,75 +3779,23 @@ function exportGraphToPDF(panelElement, graphTitle) {
     const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
 
     const printResult = (imgDataUrl) => {
-        const printableHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${graphTitle}</title>
-            <style>
-                body {
-                    font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                    color: #333;
-                    background: #fff;
-                    margin: 20px;
-                    padding: 0;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    border-bottom: 2px solid #10b981;
-                    padding-bottom: 10px;
-                }
-                .header h1 {
-                    margin: 0;
-                    font-size: 24px;
-                    color: #0f172a;
-                }
-                .header .date {
-                    font-size: 14px;
-                    color: #64748b;
-                    margin-top: 5px;
-                }
-                .chart-container {
-                    text-align: center;
-                    margin-top: 20px;
-                }
-                .chart-image {
-                    max-width: 100%;
-                    height: auto;
-                    border: 1px solid #cbd5e1;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                    border-radius: 6px;
-                }
-                @media print {
-                    body { margin: 0; }
-                    .chart-image { box-shadow: none; border: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>${graphTitle}</h1>
-                <div class="date">Tarih: ${dateStr}</div>
-            </div>
-            <div class="chart-container">
-                <img class="chart-image" src="${imgDataUrl}" alt="${graphTitle}">
-            </div>
-            <script>
-                window.onload = function() {
-                    window.print();
-                    setTimeout(function() { window.close(); }, 500);
-                };
-            </script>
-        </body>
-        </html>
-        `;
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(printableHtml);
-            printWindow.document.close();
+        // jsPDF kütüphanesi yüklüyse veya yükleyerek A4 PDF oluştur:
+        if (window.jspdf && window.jspdf.jsPDF) {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('landscape', 'mm', 'a4');
+            const imgProps = pdf.getImageProperties(imgDataUrl);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgDataUrl, 'PNG', 0, 10, pdfWidth, pdfHeight);
+            pdf.save(`${graphTitle}.pdf`);
         } else {
-            alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+            // Fallback: jsPDF yoksa canvas'ı anında Blob olarak sanal <a> tagı ile indir
+            const link = document.createElement('a');
+            link.download = `${graphTitle}.png`;
+            link.href = imgDataUrl;
+            link.click();
+            link.remove();
         }
     };
 
@@ -3942,9 +3851,44 @@ function exportGraphToPDF(panelElement, graphTitle) {
                     el.classList.contains('table-pdf-btn') ||
                     el.tagName === 'BUTTON'
                 );
+            },
+            onclone: (clonedDoc) => {
+                // 1. Klonlanan kapsayıcıyı ve içindeki tüm grafik alanlarını bul
+                const container = clonedDoc.querySelector('.pdf-report-container') || clonedDoc.body;
+
+                // 2. Koyu arka plan sınıflarını temizle ve zemini tamamen beyaz yap
+                container.style.backgroundColor = '#ffffff';
+                container.style.color = '#000000';
+
+                // 3. SVG, Canvas altı ve HTML metinlerinin renklerini siyaha ez (Force Style)
+                const allTextElements = container.querySelectorAll('text, tspan, div, span, p, label, .flot-tick-label, .amcharts-axis-label, .legendLabel');
+                allTextElements.forEach(el => {
+                    // CSS Özelliklerini Doğan Olarak Ez
+                    el.style.setProperty('fill', '#000000', 'important');
+                    el.style.setProperty('color', '#000000', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
+                    el.style.setProperty('font-weight', '700', 'important');
+                });
+
+                // 4. Çizgiler ve Eksen Çizgileri
+                const lines = container.querySelectorAll('line, path');
+                lines.forEach(line => {
+                    const currentStroke = line.getAttribute('stroke');
+                    if (currentStroke && currentStroke !== 'none' && currentStroke !== 'transparent') {
+                        line.style.setProperty('stroke-opacity', '0.8', 'important');
+                    }
+                });
+
+                // Koyu Mod CSS Kalıntılarını Temizle:
+                clonedDoc.querySelectorAll('.dark-theme, .theme-dark, .dark-mode, .dark').forEach(el => {
+                    el.classList.remove('dark-theme', 'theme-dark', 'dark-mode', 'dark');
+                });
             }
         }).then(canvas => {
-            printResult(canvas.toDataURL('image/png'));
+            requestAnimationFrame(() => {
+                const dataUrl = canvas.toDataURL('image/png');
+                printResult(dataUrl);
+            });
         }).catch(err => {
             console.error('html2canvas failed:', err);
             fallbackRasterize();
@@ -4035,40 +3979,249 @@ function exportWorkOrderReportToPDF(panelElement) {
     const t2Html = getVisibleTableHtml(table2, title2);
     const t3Html = getVisibleTableHtml(table3, title3);
 
-    const printableHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>İZBAN - Sabit Tesisler Açık İş Emri Raporu</title>
-        <style>
-            body {
-                font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                color: #333;
-                background: #fff;
-                margin: 20px;
-                padding: 0;
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-workorder-temp-container';
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '1000px';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.padding = '30px';
+    tempContainer.style.boxSizing = 'border-box';
+
+    tempContainer.innerHTML = `
+        <div style="text-align: center; margin-bottom: 25px; border-bottom: 2px solid #10b981; padding-bottom: 10px; font-family: sans-serif;">
+            <h1 style="margin: 0; font-size: 24px; color: #0f172a; font-weight: 700;">İZBAN - Sabit Tesisler Açık İş Emri Raporu</h1>
+            <div style="font-size: 14px; color: #64748b; margin-top: 5px;">Tarih: ${dateStr}</div>
+        </div>
+        <div style="display: flex; gap: 20px; justify-content: space-between; flex-wrap: wrap;">
+            ${t1Html}
+            ${t2Html}
+            ${t3Html}
+        </div>
+    `;
+
+    tempContainer.querySelectorAll('th, td').forEach(el => {
+        el.style.border = '1px solid #cbd5e1';
+        el.style.padding = '8px 10px';
+        el.style.textAlign = 'left';
+    });
+    tempContainer.querySelectorAll('th').forEach(el => {
+        el.style.backgroundColor = '#f1f5f9';
+        el.style.color = '#0f172a';
+        el.style.fontWeight = '700';
+    });
+
+    downloadPDFReport(tempContainer, 'Sabit_Tesisler_Acik_Is_Emri_Raporu.pdf');
+}
+
+function exportSabitTesislerReportToPDF() {
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+
+    // Get active filters info
+    const selectedStations = Array.from(document.querySelectorAll('#filter-istasyon option'))
+        .filter(opt => opt.selected && opt.value !== '')
+        .map(opt => opt.text);
+
+    const selectedCategories = Array.from(document.querySelectorAll('#filter-kategori option'))
+        .filter(opt => opt.selected && opt.value !== '')
+        .map(opt => opt.text);
+
+    let filterText = 'Tüm Tesisler Genel Raporu';
+    const activeFilters = [];
+    if (selectedStations.length > 0) {
+        activeFilters.push(`İstasyon: ${selectedStations.join(', ')}`);
+    }
+    if (selectedCategories.length > 0) {
+        activeFilters.push(`Kategori: ${selectedCategories.join(', ')}`);
+    }
+    if (activeFilters.length > 0) {
+        filterText = `Uygulanan Filtre: [${activeFilters.join(' | ')}]`;
+    }
+
+    // Locate the "Açık İş Emri Sayı Raporları" panel container to scoop tables
+    let targetHeadingElement = null;
+    const headings = document.querySelectorAll('h2, h3, h4, .panel-title, .x_title h2, div');
+    for (const h of headings) {
+        const text = turkishToLower((h.textContent || "").trim());
+        if (text.includes("açık iş emri sayı raporları") || text.includes("acik is emri sayi raporlari")) {
+            if (h.tagName === 'DIV' && h.querySelector('h2, h3, h4')) {
+                continue;
             }
+            targetHeadingElement = h;
+            break;
+        }
+    }
+
+    const xPanel = targetHeadingElement ? targetHeadingElement.closest('.x_panel') : document.querySelector('.x_panel');
+    const container = xPanel ? (xPanel.closest('.row') || xPanel.parentElement) : document;
+
+    const tables = container.querySelectorAll('table');
+    let ustKategoriTable = null;
+    let kategoriTable = null;
+    let istasyonTable = null;
+
+    tables.forEach(t => {
+        const headerCells = t.querySelectorAll('thead th, thead td, tbody tr:first-child th, tbody tr:first-child td');
+        const headerText = Array.from(headerCells).map(el => turkishToLower(el.textContent || "")).join(" ");
+        if (headerText.includes("ust kategori") || headerText.includes("üst kategori") || headerText.includes("ust kategorı") || headerText.includes("üst kategorı")) {
+            ustKategoriTable = t;
+        } else if (headerText.includes("kategori") || headerText.includes("kategorı")) {
+            kategoriTable = t;
+        } else if (headerText.includes("istasyon") || headerText.includes("ıstasyon") || headerText.includes("yer")) {
+            istasyonTable = t;
+        }
+    });
+
+    const getSummaryText = (table, type) => {
+        const el = document.getElementById(type + '-total-summary') || document.getElementById('kapali-' + type + '-total-summary');
+        if (el) {
+            return el.textContent.trim();
+        }
+        if (table) {
+            let sib = table.previousElementSibling;
+            while (sib) {
+                if (sib.classList.contains('izban-table-summary')) {
+                    return sib.textContent.trim();
+                }
+                sib = sib.previousElementSibling;
+            }
+        }
+        return '';
+    };
+
+    // Scraping function for target tables
+    const getTableHtml = (table, titleLabel, summaryType) => {
+        if (!table) return `<div class="report-box"><h3 class="box-title">${titleLabel}</h3><p>Veri bulunamadı.</p></div>`;
+
+        let sumText = '';
+        if (summaryType) {
+            const val = getSummaryText(table, summaryType);
+            if (val) {
+                sumText = `<div class="summary-card">${val}</div>`;
+            }
+        }
+
+        const headers = Array.from(table.querySelectorAll('thead th, tr:first-child th'));
+        const rows = Array.from(table.querySelectorAll('tbody tr, tr')).filter(tr => {
+            if (tr.querySelector('th')) return false;
+            const isVisible = tr.style.display !== 'none' && window.getComputedStyle(tr).display !== 'none';
+            const cellText = turkishToLower(tr.textContent || "");
+            const isTotalRow = cellText.includes("toplam") || cellText.includes("genel toplam");
+            return isVisible && !isTotalRow;
+        });
+
+        let headerRow = '';
+        if (headers.length >= 2) {
+            headerRow = `<tr><th>${headers[0].textContent.trim()}</th><th>${headers[1].textContent.trim()}</th></tr>`;
+        } else {
+            headerRow = '<tr><th>Kategori / İstasyon Adı</th><th>Sayısı</th></tr>';
+        }
+
+        const bodyRows = rows.map(tr => {
+            const cells = Array.from(tr.querySelectorAll('td'));
+            if (cells.length >= 2) {
+                return `<tr><td>${cells[0].textContent.trim()}</td><td>${cells[1].textContent.trim()}</td></tr>`;
+            }
+            return '';
+        }).filter(r => r !== '').join('');
+
+        return `
+            <div class="report-box">
+                <h3 class="box-title">${titleLabel}</h3>
+                ${sumText}
+                <table>
+                    <thead>
+                        ${headerRow}
+                    </thead>
+                    <tbody>
+                        ${bodyRows || '<tr><td colspan="2">Eşleşen veri bulunamadı</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    };
+
+    const ustKategoriHtml = getTableHtml(ustKategoriTable, 'Üst Kategori Raporu');
+    const kategoriHtml = getTableHtml(kategoriTable, 'Kategori Raporu', 'kategori');
+    const istasyonHtml = getTableHtml(istasyonTable, 'İstasyon Raporu', 'istasyon');
+
+    const tempContainer = document.createElement('div');
+    tempContainer.id = 'pdf-sabittesisler-temp-container';
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '1000px';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.padding = '30px';
+    tempContainer.style.boxSizing = 'border-box';
+
+    tempContainer.innerHTML = `
+        <style>
             .header {
                 text-align: center;
                 margin-bottom: 25px;
-                border-bottom: 2px solid #10b981;
+                border-bottom: 2px solid #5a738e;
                 padding-bottom: 10px;
+                font-family: sans-serif;
             }
             .header h1 {
                 margin: 0;
-                font-size: 24px;
-                color: #0f172a;
+                font-size: 20px;
+                color: #2c3e50;
             }
             .header .date {
-                font-size: 14px;
-                color: #64748b;
+                font-size: 13px;
+                color: #7f8c8d;
                 margin-top: 5px;
+            }
+            .header .filter-info {
+                font-size: 12px;
+                color: #2980b9;
+                font-weight: bold;
+                margin-top: 5px;
+            }
+            .container {
+                display: flex;
+                gap: 20px;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .report-box {
+                flex: 1;
+                min-width: 280px;
+                background-color: #ffffff;
+                border: 1px solid #dcdde1;
+                border-radius: 6px;
+                padding: 15px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+                margin-bottom: 15px;
+                font-family: sans-serif;
+                color: #000000;
+            }
+            .box-title {
+                margin-top: 0;
+                font-size: 14px;
+                color: #2980b9;
+                border-bottom: 2px solid #2980b9;
+                padding-bottom: 6px;
+            }
+            .summary-card {
+                background-color: #ebf5fb;
+                border: 1px solid #a9cbe4;
+                border-radius: 4px;
+                padding: 8px;
+                font-weight: bold;
+                color: #2980b9;
+                font-size: 12px;
+                margin-bottom: 12px;
+                text-align: center;
             }
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 10px;
-                background-color: #ffffff;
                 font-size: 12px;
             }
             th, td {
@@ -4084,48 +4237,62 @@ function exportWorkOrderReportToPDF(panelElement) {
             tr:nth-child(even) {
                 background-color: #f8fafc;
             }
-            .container {
-                display: flex;
-                gap: 20px;
-                justify-content: space-between;
-                flex-wrap: wrap;
-            }
-            @media print {
-                body { margin: 0; }
-                .container { display: flex; flex-direction: row; }
-            }
         </style>
-    </head>
-    <body>
         <div class="header">
-            <h1>İZBAN - Sabit Tesisler Açık İş Emri Raporu</h1>
+            <h1>İZMİR BANLİYÖ SİSTEMİ - SABİT TESİSLER AÇIK İŞ EMRİ RAPORU</h1>
+            <div class="filter-info">${filterText}</div>
             <div class="date">Tarih: ${dateStr}</div>
         </div>
         <div class="container">
-            ${t1Html}
-            ${t2Html}
-            ${t3Html}
+            ${ustKategoriHtml}
+            ${kategoriHtml}
+            ${istasyonHtml}
         </div>
-        <script>
-            window.onload = function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-            };
-        </script>
-    </body>
-    </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(printableHtml);
-        printWindow.document.close();
-    } else {
-        alert('Lütfen popup engelleyiciyi devre dışı bırakıp tekrar deneyin.');
+    tempContainer.querySelectorAll('th, td').forEach(el => {
+        el.style.border = '1px solid #cbd5e1';
+        el.style.padding = '8px 10px';
+        el.style.textAlign = 'left';
+    });
+
+    downloadPDFReport(tempContainer, 'Sabit_Tesisler_Raporu.pdf');
+}
+
+function injectSabitTesislerBtn() {
+    if (document.getElementById('sabit-tesisler-pdf-btn')) return;
+
+    const elements = document.querySelectorAll('h2, h3, h4, .panel-title, .x_title h2, div');
+    let headerElement = null;
+
+    for (const el of elements) {
+        const cleanedText = turkishToLower((el.textContent || "").trim());
+        if (cleanedText.includes("açık iş emri sayı raporları") || cleanedText.includes("acik is emri sayi raporlari")) {
+            if (el.tagName === 'DIV' && el.querySelector('h2, h3, h4')) {
+                continue;
+            }
+            headerElement = el;
+            break;
+        }
+    }
+
+    if (headerElement) {
+        const btn = document.createElement('button');
+        btn.id = 'sabit-tesisler-pdf-btn';
+        btn.innerHTML = '📄 Raporu PDF İndir';
+        btn.style.cssText = 'background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 15px; display: inline-flex; align-items: center; z-index: 9999;';
+        headerElement.appendChild(btn);
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            exportSabitTesislerReportToPDF();
+        });
     }
 }
 
 function injectNewGraphAndTableButtons() {
+    injectSabitTesislerBtn();
     const headers = document.querySelectorAll('h2, h3, h4, .panel-title, .x_title h2');
     headers.forEach(header => {
         const text = (header.textContent || '').trim();
@@ -4188,18 +4355,7 @@ function injectNewGraphAndTableButtons() {
         }
 
         if (textLower.includes('açık iş emri sayı raporları') && !header.querySelector('#sabit-tesisler-pdf-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'sabit-tesisler-pdf-btn';
-            btn.className = 'table-pdf-btn';
-            btn.innerHTML = '📄 Sabit Tesisler Raporunu PDF İndir';
-            header.appendChild(btn);
-
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const panel = header.closest('.x_panel') || header.parentElement;
-                exportWorkOrderReportToPDF(panel);
-            });
+            // Sabit Tesisler Açık İş Emri Raporu butonu injectSabitTesislerBtn() ile enjekte ediliyor.
         }
     });
 }
