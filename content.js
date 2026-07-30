@@ -1905,7 +1905,154 @@ function initializeSikayetlerPage() {
     });
 })();
 
+async function printHTMLReport(targetElement, fileName = 'IZBAN_Raporu.pdf') {
+    return new Promise((resolve, reject) => {
+        try {
+            console.log('[PRINT ENGINE] Initializing vector HTML print for:', fileName);
+
+            // 1. Create off-screen iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            iframe.style.left = '-9999px';
+            iframe.style.top = '0';
+            document.body.appendChild(iframe);
+
+            // 2. Extract DOM contents from the targetElement (the temporary container)
+            const contentHtml = targetElement.innerHTML;
+
+            // 3. Write print-CSS stylesheet and HTML contents into the iframe document
+            const iframeDoc = iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${fileName.replace('.pdf', '')}</title>
+                    <style>
+                        @media print {
+                            @page {
+                                size: A4 portrait;
+                                margin: 10mm 10mm 10mm 10mm;
+                            }
+                            body {
+                                background: #ffffff !important;
+                                color: #000000 !important;
+                                font-family: Arial, Helvetica, sans-serif !important;
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            table {
+                                width: 100% !important;
+                                border-collapse: collapse !important;
+                                page-break-inside: auto !important;
+                                margin-top: 15px;
+                            }
+                            tr, td, th {
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                            }
+                            thead {
+                                display: table-header-group !important;
+                            }
+                            tbody {
+                                display: table-row-group !important;
+                            }
+                            * {
+                                color: #000000 !important;
+                                box-shadow: none !important;
+                                text-shadow: none !important;
+                            }
+                            .btn, button, .action-buttons, input, select, .no-print {
+                                display: none !important;
+                            }
+                        }
+                        
+                        /* Layout styling structure for visual accuracy */
+                        body {
+                            background-color: #ffffff;
+                            color: #000000;
+                            font-family: sans-serif;
+                            padding: 20px;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-top: 15px;
+                        }
+                        th, td {
+                            border: 1px solid #cbd5e1;
+                            padding: 8px 10px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #f1f5f9;
+                            color: #0f172a;
+                            font-weight: 700;
+                        }
+                        tr:nth-child(even) {
+                            background-color: #f8fafc;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${contentHtml}
+                </body>
+                </html>
+            `);
+            iframeDoc.close();
+
+            // 4. Minimum 150ms settled delay before showing the print dialog
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+
+                    // Cleanup after printing completes
+                    setTimeout(() => {
+                        if (iframe.parentElement) {
+                            document.body.removeChild(iframe);
+                        }
+                        resolve();
+                    }, 1000);
+                } catch (printErr) {
+                    console.error('[PRINT ENGINE ERROR] Dialog failed:', printErr);
+                    if (iframe.parentElement) {
+                        document.body.removeChild(iframe);
+                    }
+                    reject(printErr);
+                }
+            }, 200);
+
+        } catch (err) {
+            console.error('[PRINT ENGINE ERROR] Setup failed:', err);
+            reject(err);
+        }
+    });
+}
+
 async function downloadPDFReport(targetElement, fileName = 'IZBAN_Raporu.pdf') {
+    // Smart Router: If targetElement contains a table, use dynamic vector print HTML
+    const tableWord = targetElement.querySelector('table');
+    if (tableWord) {
+        console.log('[PRINT ENGINE] Smart Router: Redirecting table export to HTML vector engine.');
+        try {
+            await printHTMLReport(targetElement, fileName);
+        } catch (err) {
+            console.error('[PRINT ENGINE ERROR] Vector print failed:', err);
+        }
+        return;
+    }
+
+    console.log('[PRINT ENGINE] Smart Router: Routing graphic export to canvas rendering engine.');
+    return oldDownloadPDFReport(targetElement, fileName);
+}
+
+async function oldDownloadPDFReport(targetElement, fileName = 'IZBAN_Raporu.pdf') {
     const originalPdfId = targetElement.dataset.pdfId;
     const tempId = 'pdf-export-' + Math.random().toString(36).substr(2, 9);
     targetElement.dataset.pdfId = tempId;
@@ -1983,7 +2130,7 @@ async function downloadPDFReport(targetElement, fileName = 'IZBAN_Raporu.pdf') {
     }
 }
 
-function exportTableToPDF(tableElement, pageTitle) {
+async function exportTableToPDF(tableElement, pageTitle) {
     if (!tableElement) return;
 
     const turkishToLower = (str) => {
@@ -2012,19 +2159,57 @@ function exportTableToPDF(tableElement, pageTitle) {
 
     const rows = Array.from(tableElement.querySelectorAll('tbody tr'));
     let rowHtml = "";
-    rows.forEach(tr => {
-        if (tr.style.display === 'none') return;
-        if (!tableElement.querySelector('thead') && tr === headerTr) return;
-        if (tr.children.length < 3) return;
 
-        const cells = Array.from(tr.querySelectorAll('td, th'));
-        rowHtml += "<tr>";
-        cells.forEach((cell, idx) => {
-            if (excludeIndices.includes(idx)) return;
-            rowHtml += `<td>${cell.textContent.trim()}</td>`;
+    const processRowsChunked = () => {
+        return new Promise((resolve) => {
+            let index = 0;
+            const chunkSize = 200;
+
+            function nextBatch() {
+                const limit = Math.min(index + chunkSize, rows.length);
+                for (let i = index; i < limit; i++) {
+                    const tr = rows[i];
+                    if (tr.style.display === 'none') continue;
+                    if (!tableElement.querySelector('thead') && tr === headerTr) continue;
+                    if (tr.children.length < 3) continue;
+
+                    const cells = Array.from(tr.querySelectorAll('td, th'));
+                    rowHtml += "<tr>";
+                    cells.forEach((cell, idx) => {
+                        if (excludeIndices.includes(idx)) return;
+                        rowHtml += `<td>${cell.textContent.trim()}</td>`;
+                    });
+                    rowHtml += "</tr>";
+                }
+                index = limit;
+                if (index < rows.length) {
+                    setTimeout(nextBatch, 0);
+                } else {
+                    resolve();
+                }
+            }
+            nextBatch();
         });
-        rowHtml += "</tr>";
-    });
+    };
+
+    if (rows.length > 500) {
+        console.log(`[PRINT ENGINE] Processing large dataset: chunking ${rows.length} rows.`);
+        await processRowsChunked();
+    } else {
+        rows.forEach(tr => {
+            if (tr.style.display === 'none') return;
+            if (!tableElement.querySelector('thead') && tr === headerTr) return;
+            if (tr.children.length < 3) return;
+
+            const cells = Array.from(tr.querySelectorAll('td, th'));
+            rowHtml += "<tr>";
+            cells.forEach((cell, idx) => {
+                if (excludeIndices.includes(idx)) return;
+                rowHtml += `<td>${cell.textContent.trim()}</td>`;
+            });
+            rowHtml += "</tr>";
+        });
+    }
 
     const currentDateString = new Date().toLocaleDateString('tr-TR');
 
